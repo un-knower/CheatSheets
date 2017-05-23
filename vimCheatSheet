@@ -1,0 +1,131 @@
+SEARCHING
+/string       search forward
+?string       search backward
+n , N         next, previous match
+:set ic       ignore case sensitivity
+:set noic     case sensitive
+:set nu       turn on line numbers    :se nu   :set number
+:X,Yg/str     search for str from line X to Y
+:g/str/cmd    run cmd on str
+* , #         Search for next/prev instance of current word
+
+REPLACING
+:s/foo/bar/g    replace EXACT MATCH pattern with replacement in whole line
+:%s/foo/bar/g   replace EXACT MATCH pattern with replacement globally
+:s/foo/bar/c    with confirmation
+:X,Ys/foo/bar/g replace between lines X and Y
+&                 replaces last command
+
+EDITING / CUTTING
+cw              changes current word
+c2w             cut 2 words (remaind in insert mode)
+cc , S          cut (to register) whole line and starts from beginning
+c$ , C          cut (to register) from current point to end of line
+s               substitutes char with string
+NJ              joins N line below to current (Adding space between)
+~               toggle upper/lower case
+> ,  <          indent (tab), press 2x
+ZZ   :wq        save and quit
+
+INSERTING / PASTING / COPY
+a               append after current char
+I               insert at the beginning of line
+A               append after line
+o , O           add line after, before current
+y2w             copy 2 words
+"ay$            copy to end of line to register a
+Nyy             copy current line with next N lines
+:y,  Y, yy      copy current line
+"<a-z>y         copy to <a-z> register        # "add   delete current line and put in register 'a'
+""<p or P>      paste current register after or before current line
+:r <file>       reads file and inserts after current line
+
+DELETING
+x               deleting current
+X               deleting to the left of char (backspace)
+D , d$          delete rest of line
+dd   :d         delete current line
+d0, d$          delete to beginning/end of line
+dG              delete to EOD end of document EOF
+Ndd             delete next N lines
+Ndw, dNw        delete next N words
+Ndb             delete prev N words
+:X,Yd           deleted lines from X to Y
+CTRL + W        (in edit mode) delete prev word
+CTRL + U        (in edit mode) delete to beginning of insert
+
+NAVIGATION
+0               beginning of line
+^               first non-blank char of line
+$               end of line
+1G , gg         start of file
+G               end of file
+:N , NG         Nth line of file
+f<char>         forward to char in current line (F<char> backwards), press ; for next occurence
+H , M , L       top, mid, end of page
+zt, zz, zb      scroll to top/middle/bottom (current lines becomes top/mid/bottom)   (z<enter>   z.   z-)
+%               shows/move to macthing bracket
+CTRL + D, U     scrolls down/up half page
+CTRL + F, B     scrolls down/up 
+CTRL + G        displays current info,  same as :f
++ , -           move to first char of next/prev line
+
+COMMAND LINE
+vi + <file>     starts editing at end of file
+vi +N <file>    starts editing at line N
+vi +/str <file> starts editing at first occurence of str
+
+SPLIT / MULTIPLE FILES
+:vsp, :sp       vertical split |||,  horizontal split ---
+:diffs          diff horizontal
+CTRL+W, c (q)   close current window
+vi -o <1> <2>   horizontal compare 2 files when opening
+:args           list files and marks active file    :rew    point to first file
+:n              start editing next file             :e   toggle with last edited
+
+MARKER / MACRO
+mc              set marker c (A-Z global, a-z buffer)
+'c              go to marker c     (`c)
+`.              position of last modification
+q<a-z>          starts recording macro, press q to stop
+@<a-z>          reply last macro
+
+AUTOCOMPLETION
+CTRL+X, CTRL+F  file/path
+CTRL+X, CTRL+I  list of words in file
+CTRL+X, CTRL+K  dictionary
+:ab str long string   abbreviate <str> to be 'long string'      :una <str> unabbrev
+
+RANGES
+:n,m            Lines n-m
+:.              Current line
+:$              Last line
+:'c             Marker c
+:%              All lines in file
+:g/pattern/     All lines that contain pattern
+:.,$s/pattern/string/g      to make a replacement from the current line to the end of the file.
+:.!<command>  = same as !! (without : ) =    replace current line with command    # same with  :r !<command>
+:,!command	    # replace current line with command output	
+:!              escape to shell
+
+
+
+MAPPING
+:map <F6> :set number!<bar>set number?<CR>   toggle between set number and set nonumber. Set number! toggles. Set number? reports stare
+:map! - for insert mode
+map V dWElp       Mapping the key v to swap two words
+ab usa United Stated
+:abbr   list of abbr
+vi +/pattern filename     start vi at specific pattern
+:X          encrypting file,  use   vi -x  to decrypt
+ map <f9> :w<CR>:!python %<CR>	run current file with external program
+
+EX editor
+.     current line
+$     last line
+1,$   all lines, same as   %
+
+~/.exrc  (config file)
+set autoindent (ai) autowrite (aw) ignorecase (ic) number (nu) showmatch (sm) wrapscan (ws)
+
+http://www.cs.umsl.edu/~sanjiv/classes/cs2750/lectures/vi.pdf
