@@ -270,6 +270,15 @@ while IFS="" read -r -d "" file <&4 ; do
   COMMAND "$file" # Use quoted "$file", not $file, everywhere.
 done 4< mypipe
 
+mkfifo matrix
+if [[ $1 == -c ]]
+then
+gzip < matrix > matrix.gz &
+else
+gunzip < matrix.gz > matrix &
+fi
+rm matrix
+
 # Process Handling.
 # To suspend a job, type CTRL+Z or CTRL+Y  while it is running. You can also suspend a job with CTRL+Y, 
 # this is slightly different from CTRL+Z in that the process is only stopped when it attempts to read input from terminal.
