@@ -190,14 +190,17 @@ do
   statements that can use $name
 done
 
+# READ PARAMETERS
 while (( $# )) ; do                     # while :    (colon means infinite loop), must use break inside
      echo You gave me $1                # starts from $1, then $2, $3 etc
-     shift                                                  # while sleep 60; do ; if who | grep -s $1 ; then ; echo $1 is logged; fi
-done                      # while read -r line;do echo "$line";done < file
+     shift                              # while sleep 60; do ; if who | grep -s $1 ; then ; echo $1 is logged; fi
+done
 
-while read f; do 
-     echo "file=${f}"
+# READ FILE LIST IN FOLDER
+while read f; do              # FILES=$(ls -1)
+     echo "file=${f}"         # for f in $FILES; do echo ${f}; done
 done < <(ls -l /tmp)
+
 # This is a safe way of parsing a command's output into strings
 while read -r -d ''; do      # while IFS= read -r -d $'\0' file; do
     files+=("$REPLY")         # arr[i++]=$REPLY
@@ -209,11 +212,19 @@ done <<EOF                    # or   <<< "$var"
 $var
 EOF
 
-IFS=$'\n' read -rd '' -a lines <file
+while IFS= read -r -d '' file; do
+echo $(basename "$file")
+array+=${file}
+done < <(find . -type f -print0)
 
-find . -print0 | while IFS="" read -r -d "" file ; do ...
-   COMMAND "$file" # Use quoted "$file", not $file, everywhere.
+find . -type f -print0 | while IFS="" read -r -d "" file ; do
+   echo `basename "$file"`
 done
+
+# READ FILE CONTENT
+while read -r line;do echo "$line";done < file
+while IFS=$'\n' read -rd $'\n' -a lines; do echo $lines; done < file
+
 
 until condition; do    # e.g.   until who | grep -s $1 ; do ; sleep 60 ; done ;   if [ $? ] ; then; echo $1 is logged ; fi
   statements
