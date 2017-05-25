@@ -279,6 +279,16 @@ gunzip < matrix.gz > matrix &
 fi
 rm matrix
 
+GNUPLOT_PIPE=/tmp/gnuplot_pipe
+[[ -e $GNUPLOT_PIPE ]] || mkfifo $GNUPLOT_PIPE         # If the pipe doesn't exist, create it
+cat > $GNUPLOT_PIPE << EOF &
+  unset key
+  plot '$DATA_FILE' using :1 with lines
+replot '$DATA_FILE' using :2 with lines
+EOF
+gnuplot --persist < $GNUPLOT_PIPE       # Start gnuplot and pull stdin from the pipe
+rm $GNUPLOT_PIPE                        # Clean up pipe on exit
+
 # Process Handling.
 # To suspend a job, type CTRL+Z or CTRL+Y  while it is running. You can also suspend a job with CTRL+Y, 
 # this is slightly different from CTRL+Z in that the process is only stopped when it attempts to read input from terminal.
