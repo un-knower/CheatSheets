@@ -355,6 +355,18 @@ date --date='@2147483647'                    # Convert seconds since the epoch (
 [ $(date -d '12:00 today +1 day' +%d) = '01' ] || exit	# exit a script unless it's the last day of the month
 err() {   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $@" >&2   }       # err "unable to do sth"
 
+#measure script running time
+SECONDS=0
+sleep 10
+duration=$SECONDS
+echo "$(($duration / 60)) minutes and $(($duration % 60)) seconds elapsed."
+ELAPSED="Elapsed: $(($SECONDS / 3600))hrs $((($SECONDS / 60) % 60))min $(($SECONDS % 60))sec
+
+START=$(date +%s.%N)
+sleep 1
+END=$(date +%s.%N)
+DIFF=$(echo "$END - $START" | bc)
+
 # to quickly go to a specific directory
 cd; nano .bashrc
 > shopt -s cdable_vars
