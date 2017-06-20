@@ -322,6 +322,32 @@ if ps -ef | grep '[f]oo'; then
 
 sleep 1000; CTRL+Z ; bg ;  disown <PID|JID>    # removes the process from the list of jobs
 nohup sleep 1000 &
+nohup ${SHELL} -c 'complex-command-line'
+export -f func           # function execution
+nohup ${SHELL} -c 'command line invoking func'
+nohup command/script.sh &       # If you want the SIGQUIT signal to also be ignored, you can run nohup in the background
+nohup bash -c "(time ./script arg1 arg2 > script.out) &> time_n_err.out" &
+# stdout from the script gets written to script.out, while stderr and the output of time goes into time_n_err.out.
+nohup sh -c 'wget "$0" && wget "$1"' "$url1" "$url2" > /dev/null &
+ssh my_server "bash -c 'source load_module jdk; source load_module jabref; java_exe=\$(which java); jabref_exe=\$(which jabref); jabref_dir=\$(echo \${jabref_exe%/bin/jabref});eval \$(java -jar \$jabref_dir/jabref.jar $1)'" &
+
+# script will run as daemon in the background when parameter specified
+case "$1" in
+    -d|--daemon)
+        $0 < /dev/null &> /dev/null & disown
+        exit 0
+        ;;
+    *)
+        ;;
+esac
+# do stuff here, normal commands
+
+
+If you now start your script with --daemon as an argument, it will restart itself detached from your current shell.
+
+# screen for background stuff
+screen -d -m -S mybackgroundjob /usr/local/bin/somescript.sh
+
 
 watch -n 5 'ntpq -p'  # Issue the 'ntpq -p' command every 5 seconds and display output
 watch -n.1 pstree -Uacp $$	# Display a changing process subtree
