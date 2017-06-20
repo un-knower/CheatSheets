@@ -104,6 +104,12 @@ parallel ssh {/} bash "<" {} ::: /etc/myapp/*   # easy to parallelize
 ### 8 from file
 ssh user@server 'bash -s' < /path/script.sh
 
+### 9 using parameters/variables
+ssh user@host ARG1=$ARG1 ARG2=$ARG2 'bash -s' <<'ENDSSH'
+  # commands to run on remote host
+  echo $ARG1 $ARG2
+ENDSSH
+If any of the env var values contain spaces, use: ssh user@host "ARG1=\"$ARG1\" ARG2=\"$ARG2\"" 'bash -s' <<'ENDSSH'
 
 ######### COLORING ###############
 echo_failure() {
