@@ -221,6 +221,16 @@ find . -type f -print0 | while IFS="" read -r -d "" file ; do
    echo `basename "$file"`
 done
 
+for f in "$@"
+  do
+    script2.sh "$f"
+  done
+[ $# -eq 0 ] && ls | while read f
+  do
+    script.sh "$f"
+  done
+
+
 # READ FILE CONTENT
 while read -r line;do echo "$line";done < file
 while IFS=$'\n' read -rd $'\n' -a lines; do echo $lines; done < file
