@@ -269,3 +269,17 @@ if len(CONFIG.read("clouderaconfig.ini")) < 1:
 CM_HOST=CONFIG.get("CM", "cm.host")
 CM_PORT=CONFIG.get("CM", "cm.port")
 print (CM_HOST, CM_PORT)
+
+############################### EXECUTING via SSH and subprocess
+      
+print "Checking if Oracle JDK 1.7 is installed"        
+shell_command = ["ssh -t -t " + host + " sudo test -d /usr/java/jdk1.7.0_67-cloudera ; echo xxx$?"]
+output = Popen(shell_command, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True).stdout.read()
+        if output.find("xxx0") < 0:
+            print "Folder /usr/java/jdk1.7.0_67-cloudera does not exist. Java is not installed, please check and reinstall. Exiting..."
+            exit(1)
+        print "Java OK."
+
+shell_command = ["ssh -t -t " + host + " sudo sed -i.old '\$a\export\ JAVA_HOME\=\/usr\/java\/jdk1.7.0_67-cloudera' /etc/profile"]
+print "Executing " + shell_command        
+output = Popen(shell_command, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True).stdout.read()
