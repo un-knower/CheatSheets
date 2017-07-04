@@ -220,3 +220,52 @@ def sign(x):
   return (x>0)-(x<0)  # zwraca -1, 0, 1
       
 ###############################################################
+###############################################################
+import argparse, configparser, os, sys, imp
+
+def print1(args):
+    if args.printing1:
+        print ("I am inside 'print1'")
+
+parser = argparse.ArgumentParser(description="DESCR")
+parser.add_argument("-s", "--server", help="server")
+parser.add_argument("-p", "--port",   help="port",  default=7180)
+parser.add_argument("-t", "--action", help="action", type=int, choices=[1,2,3])
+parser.add_argument("--flag", action="store_true", help="acts as flag")
+parser.add_argument("-c", action="count", help="ccccccOUUNTING!", default=0)
+group = parser.add_mutually_exclusive_group()
+group.add_argument("-v", "--verbose", action="store_true")
+group.add_argument("-q", "--quiet", action="store_true")
+        
+# you can select only ONE of the subparser commands in the command line
+subparsers = parser.add_subparsers(help="subparssssss")
+
+parser_a = subparsers.add_parser('print1', help="prints all")
+parser_a.add_argument("printing1", help="printing True/False")
+parser_a.set_defaults(func=print1)
+
+parser_b = subparsers.add_parser('debug1', help="debugging")
+parser_b.add_argument("debugging1", help="debugs all")
+
+args = parser.parse_args()
+if len(sys.argv) < 2:
+    parser.print_help()
+
+print (args)
+try:
+    args.func(args) # executing function selected in command line
+except:
+    pass
+
+##############################
+##############################      CONFIG PARSER
+
+CONFIG = configparser.ConfigParser()
+os.chdir("C:\\CS")
+if len(CONFIG.read("clouderaconfig.ini")) < 1:
+    print ("Cannot find config.ini")
+    #exit(1)
+    
+CM_HOST=CONFIG.get("CM", "cm.host")
+CM_PORT=CONFIG.get("CM", "cm.port")
+print (CM_HOST, CM_PORT)
