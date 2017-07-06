@@ -92,6 +92,18 @@ my_get_text = p_decorate(get_text)
 print (my_get_text("XXX"))
       
 ### example with decorator
+def p_decorate(myfunc):
+    def func_wrapper(name):
+        return "<p>{0}</p>".format(myfunc(name))
+    return func_wrapper
+
+@p_decorate
+def get_text(myname):
+    return "lorem ipsum, {0} dolor sit amet".format(myname)
+
+print (get_text("Tim"))
+      
+#another      
 def escape_unicode(f):
     def wrap(*args, **kwargs):
         x = f(*args, **kwargs)
