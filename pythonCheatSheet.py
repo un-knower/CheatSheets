@@ -79,6 +79,19 @@ cube(3)  #27
 cube(10) #1000
 
 ############################################## DECORATORS
+#example without decorator
+def get_text(myname):
+    return "lorem ipsum, {0} dolor sit amet".format(myname)
+
+def p_decorate(func):
+    def func_wrapper(myname):
+        return "<p>{0}</p>".format(func(myname))
+    return func_wrapper
+
+my_get_text = p_decorate(get_text)
+print (my_get_text("XXX"))
+      
+### example with decorator
 def escape_unicode(f):
     def wrap(*args, **kwargs):
         x = f(*args, **kwargs)
