@@ -221,7 +221,7 @@ def sign(x):
       
 ###############################################################
 ###############################################################
-import argparse, configparser, os, sys, imp
+import argparse, os, sys, imp
 
 def print1(args):
     if args.printing1:
@@ -258,7 +258,7 @@ except:
     pass
 
 ##############################
-##############################      CONFIG PARSER
+##############################      CONFIG PARSER, import configparser
 
 CONFIG = configparser.ConfigParser()
 os.chdir("C:\\CS")
@@ -269,6 +269,12 @@ if len(CONFIG.read("clouderaconfig.ini")) < 1:
 CM_HOST=CONFIG.get("CM", "cm.host")
 CM_PORT=CONFIG.get("CM", "cm.port")
 print (CM_HOST, CM_PORT)
+      
+config_files = glob.glob(args.config_path)
+for c_file in config_files:
+    print("%s :: Loading config: %s".format(c_file) % (str(datetime.now()), format(c_file)))
+    config = ConfigParser()
+    config.read(c_file)
 
 ############################### EXECUTING via SSH and subprocess
       
