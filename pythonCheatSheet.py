@@ -302,7 +302,7 @@ for c_file in config_files:
     config = ConfigParser()
     config.read(c_file)
 
-############################### EXECUTING via SSH and subprocess
+############################### EXECUTING via SSH
       
 print "Checking if Oracle JDK 1.7 is installed"        
 shell_command = ["ssh -t -t " + host + " sudo test -d /usr/java/jdk1.7.0_67-cloudera ; echo xxx$?"]
@@ -315,3 +315,16 @@ output = Popen(shell_command, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT
 shell_command = ["ssh -t -t " + host + " sudo sed -i.old '\$a\export\ JAVA_HOME\=\/usr\/java\/jdk1.7.0_67-cloudera' /etc/profile"]
 print "Executing " + shell_command        
 output = Popen(shell_command, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True).stdout.read()
+      
+############################### SUBPROCESS
+from concurrent import futures
+from time import sleep
+
+def f(n):
+    sleep(n)
+    print(n)
+
+if __name__=='__main__':
+    with futures.ProcessPoolExecutor() as pool:
+        for x in pool.map(f, range(1, 5)):
+            print('{}'.format(x))
