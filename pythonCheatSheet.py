@@ -327,11 +327,26 @@ output = Popen(shell_command, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT
 from concurrent import futures
 from time import sleep
 
-def f(n):
-    sleep(n)
-    print(n)
+def f(x,y):
+    print ('{}={}'.format(x,y))
+    sleep(1)
+    return y-x
 
+if __name__=='xxxxx__main__':
+    with futures.ProcessPoolExecutor() as pool:
+        for ret in pool.map(f, [1,2,3], [40,50,60]):
+            print('{}'.format(ret))
+            
 if __name__=='__main__':
     with futures.ProcessPoolExecutor() as pool:
-        for x in pool.map(f, range(1, 5)):
-            print('{}'.format(x))
+        fs = [ pool.submit(f, x,y) for x in [1,2,3] for y in [100,200,300] ]
+        while not fs[0].done():   # mamy wiele jobow
+            print ("not done")
+        for x in futures.as_completed(fs):   # mozna uzyc While TRUE:
+            try:
+                number = x.result(timeout = 0.1)
+            except futures.TimeoutError:
+                print ("Working....")
+            except ValueError:
+                continue
+            print('{} :::::'.format(number))
