@@ -79,6 +79,13 @@ cube = raise_to(3)
 cube(3)  #27
 cube(10) #1000
 
+# OWN EXCEPTION must be a class
+class Foo(Exception):
+      print("tutaj mozna cos definiowac albo dac pass")
+raise Foo
+except Foo:
+      tutaj cos innego mozna robic + to co w klasie i tak sie wykona
+      
 ############################################## DECORATORS
 #example without decorator
 def get_text(myname):
