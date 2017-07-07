@@ -8,7 +8,8 @@ return not re.search(r'\b0[0-09]', xxx)     #  543 0453   will be false         
 list= [b for a,b in listx if a in ['good', 'bad']]          # [str(i) for i in range(5)]  ==    list(map(str, range(5)))
 set = {i for i in range(10)}
 dict= {i: i*2 for i in range(10)}
-gener=(i for i in range(10))
+gener=(i for i in range(10))      # generator
+lista = list(gener)       tuple = tuple(gener) .... # itd.
 [(x,y) for x in range(5) for y in range(5)]
 [[ y*3 for y in range(x)] for x in range(5)]  #  [[], [0], [0,3], [0,3,6], [0,3,6,9]]
 
