@@ -184,6 +184,23 @@ def create_list(value, size):
     return [value] * size 
 create_list(123, -6)   # tutaj wyrzuci error jak planowane
 
+     
+# przyklad classmethod, drukuje derived blog zamiast blog  
+class Blog():
+  __tablename__ = 'blog'
+
+  def table_name(self):
+    return self.__tablename__
+
+  @classmethod
+  def other_table_name(cls):
+    return cls.__tablename__
+
+class DerivedBlog(Blog):
+  __tablename__ = 'derived_blog'
+
+b = DerivedBlog()
+print(b.table_name()) # prints 'derived_blog'
 ################################################   STRING REPRESENTATION
 class Point2D:
   def __str__(self): # for clients, readable human-friendly output, also STR() constructor, PRINT uses that
