@@ -11,6 +11,9 @@ return not re.search(r'\b0[0-09]', xxx)     #  543 0453   will be false         
 
 [(r'a((a+)|(b+))'   , 'capturing form'),
 (r'a((?:a+)|(?:b+))', 'noncapturing')]   # cos jak bez powtorzen
+without_case = re.compile(pattern, re.IGNORECASE)
+multiline = re.compile(pattern, re.MULTILINE) # pattern applies to each line separately
+dotall = re.compile(pattern, re.DOTALL)       # pozwala traktowac kropke jak nowa linie, wiec tekst nie jest \n - owany
 
 # list comprehension
 list= [b for a,b in listx if a in ['good', 'bad']]          # [str(i) for i in range(5)]  ==    list(map(str, range(5)))
@@ -70,6 +73,7 @@ timeit(setup="from __main__ import resolve", stmt="resolve('python.org')", numbe
 ##########################################################     FORMAT
 print("{:f}".format(_))  # drukuje ostatnia odpowiedz
 print("orientation {p[0]:>3}  {o:>2}".format(...)   # max 3 or 2 characters..(rounding up)
+
 
 #CONDITIONAL EXPRESSION
 result = true_value if condition else false_value
