@@ -2,8 +2,12 @@ $ python -m cProfile script.py
 import cProfile
 cProfile.run("testfunction()")
 
-return not re.search(r'\b0[0-09]', xxx)     #  543 0453   will be false         123 True   432 234 True
-
+return not re.search(r'\b0[0-09]', xxx)     #  543 0453   will be false         123 True   432 234 True      r'...' raw string
+# Regex codes,   raw string does not need escaping
+\d - digit     \D - non digit      \s - whitespace    \S - non whitespace     \w - alphanum    \W - non alphanum
+\b - empty string at the beginning or end of a word   \B - empty string NOT at the beginning....
+\bt\w+ = 't' at a start of a word           \w+t\b = 't' at the end of a word
+\Bt\B  = 't' not start or end of word
 # list comprehension
 list= [b for a,b in listx if a in ['good', 'bad']]          # [str(i) for i in range(5)]  ==    list(map(str, range(5)))
 set = {i for i in range(10)}
