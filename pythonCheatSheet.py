@@ -9,11 +9,28 @@ return not re.search(r'\b0[0-09]', xxx)     #  543 0453   will be false         
 ' \bt\w+ = 't' at a start of a word           \w+t\b = 't' at the end of a word
 ' \Bt\B  = 't' not start or end of word
 
+# flags can be added in the pattern using (?<tutaj flaga>), e.g. pattern = r'(?i)\bT\w+'
+i - ignorecase,   m - multiline,  s - dotall,  x - verbose,  a - ascii (ucina nie ascii charactery)
+
 [(r'a((a+)|(b+))'   , 'capturing form'),
 (r'a((?:a+)|(?:b+))', 'noncapturing')]   # cos jak bez powtorzen
 without_case = re.compile(pattern, re.IGNORECASE)
 multiline = re.compile(pattern, re.MULTILINE) # pattern applies to each line separately
 dotall = re.compile(pattern, re.DOTALL)       # pozwala traktowac kropke jak nowa linie, wiec tekst nie jest \n - owany
+, re.IGNORECASE | re.VERBOSE # pozwala na uzycie docstringowej wersji, wprzypadku skomplikowanych re, z koment """ \w+  #comment """
+
+bold = re.compile(r'\*{2}(.*?)\*{2}')
+text = 'Make this **bold**. This **too**.'
+print('Bold:', bold.sub(r'<b>\1</b>', text))
+
+bold = re.compile(r'\*{2}(?P<bold_text>.*?)\*{2}')            # named group def:  ?P<name>
+text = 'Make this **bold**. This **too**.'
+print('Bold:', bold.sub(r'<b>\g<bold_text></b>', text))       # using names groups with \g<namedgroup>
+
+?=pattern   => look ahead
+?|pattern   => negative look ahead
+?<!pattern  => negative look back
+?<=pattern  => positive look back
 
 # list comprehension
 list= [b for a,b in listx if a in ['good', 'bad']]          # [str(i) for i in range(5)]  ==    list(map(str, range(5)))
@@ -42,6 +59,17 @@ sorted(costam, key=last_letter)
 for (i, d) in enumerate("ABC"):
   print i,d  #  0, 'A',      1, 'B'     2,'C'
 
+# COLLECTIONS,   import collections
+m1 = collections.ChainMap(dicta, dictb)  # laczy dict w jeden, keys wg. kolejnosci, nie ma duplikatow
+m2 = m1.new_child({'c': 'cos tam'}) # dodanie nowego dictionary, na poczatku, jako pusty, wiec bedzie ({}, {dicta}, {dictb})
+m2 = collections.ChainMap(nowydict, *m1.maps)
+
+print(collections.Counter(['a', 'b', 'c', 'a', 'b', 'b']))
+print(collections.Counter({'a': 2, 'b': 3, 'c': 1}))
+print(collections.Counter(a=2, b=3, c=1))
+Counter.updpate('abcde')
+
+      
 ############################################################  MAP  map(f, a,b,c)  is lazy, Py3 produces values when needed = iterator
 # uzywamy class Trace() zdefiniowanej ponizej, jako dekoratora,   in python 2 they return lists
 results = map(Trade()(ord), "The quick brown fox") # result iterator!
