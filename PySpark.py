@@ -33,6 +33,11 @@ df.withColumn("nowa", F1(df['nr'])).show()                              # tutaj 
 data = [(1, Row(name='Alice', age=2))]
 df = spark.createDataFrame(data, ("key", "value"))
 
+# CREATE 2
+g = sc.textFile("/g").filter(lambda x: x[0] != '#').map(lambda x: x.split('\t')).map(lambda p: Row(taxid=int(p[0]), geneid=int(p[1]), pmid=int(p[2])))
+schemaGene2Pubmed = sqlContext.inferSchema(g)
+schemaGene2Pubmed.registerTempTable("gene2pubmed")
+
 #AGG
 people.join(department, people.deptId == department.id).groupBy(department.name, "gender").agg({"salary": "avg", "age": "max"})
 df.agg({"age": "max"}).collect() # albo podajesz dict
