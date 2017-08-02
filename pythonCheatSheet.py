@@ -407,3 +407,18 @@ if __name__=='__main__':
             except ValueError:
                 continue
             print('{} :::::'.format(number))
+
+     
+      
+      
+##############################  WEB CRAWLING
+import requests
+response = requests.get('http://www.wp.pl')
+response.content.decode('utf-8')
+url="http://www.google.com/%s" % (address_do_podmiany)
+response = requests.get(url).json()
+      
+python_data = json.loads('"Hello"')   # list, musi byc z ' '
+python_data[0]   # first element of that list --> dict
+python_data[0]['b']
+      
