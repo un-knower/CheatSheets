@@ -422,3 +422,28 @@ python_data = json.loads('"Hello"')   # list, musi byc z ' '
 python_data[0]   # first element of that list --> dict
 python_data[0]['b']
       
+################################ XML
+      
+from lxml import etree
+root = etree.XML(data)
+print (root.tag)
+print (etree.tostring(root, pretty_print=True).decode('utf-8'))
+      
+for element in root.iter():
+      print(element)      # prints <element bookstore at 0xr435435243424>
+      
+for child in root:
+      print(child)        # prints just each leaf, no traversing to the end
+      print(child.tag)
+      
+for element in root.iter('Author'):
+      print (element.find('First Name').text)
+      
+for element in root.findall('Book/Authors/Author/Last_Name'):  # and not e.g.  Author/Title, to jest xpath
+      print (element.text)
+      
+for element in root.find('Book[@Weight="1.5"]/Authors/Author/Last_Name')
+      print (element.text)
+      
+      
+      
