@@ -421,7 +421,26 @@ response = requests.get(url).json()
 python_data = json.loads('"Hello"')   # list, musi byc z ' '
 python_data[0]   # first element of that list --> dict
 python_data[0]['b']
+
+from bs4 import BeautifulSoup
+rseult_page = BeautifulSoup(response.content, 'lxml')  # zamiast parsing library lxml moze byc html5lib
+print(page_soup.prettify())
       
+      <tag>.find_all(<tag_name>, attribute=value)   # e.g.    all_div_tags = result_page.find_all('div', class_="sth")
+      <tag>.find_all(<tag_name>, {'class':'recipe-ard'})
+      <tag>.get_text()    #    result_page.find_all(<tag_name>, {'class':'recipe-ard'}).get_text()
+      <tag>.get(attribute)
+      recipe_tag = result.find('artic'....)
+      recipe_link= recipe_tag.find('a')
+      recipe_url = recipe_link.get('href')
+# <input name="wpLoginToken" value="efefefefeff+\"/>
+      token = response.find( 'input', {'name':'wpLoginToken'} ).get('value')
+# logging in
+with requests.session() as s:
+      response = s.get('http://....')
+      dictionary_with_params['wpLoginToken'] = get_token_function(response)
+      response_post = s.post('https://www.wikip.org/w/index.php?title...&action=submitlogin&type=login', data=dictionary_with_params)
+                               
 ################################ XML
       
 from lxml import etree
