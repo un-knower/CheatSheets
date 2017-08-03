@@ -445,5 +445,8 @@ for element in root.findall('Book/Authors/Author/Last_Name'):  # and not e.g.  A
 for element in root.find('Book[@Weight="1.5"]/Authors/Author/Last_Name')
       print (element.text)
       
+for element in root.findall('Book/Authors/Author[@Residence="New York City"]'):
+      print(element.find('First_Name').text, element.find('Last_Name').text)
       
-      
+for first_name,last_name in zip(root.findall('Book/Authors/Author[@Residence="New York City"]/First_Name'),root.findall('Book/Authors/Author[@Residence="New York City"]/Last_Name')):
+      print(first_name.text+' '+ last_name.text)
