@@ -490,3 +490,35 @@ for element in root.findall('Book/Authors/Author[@Residence="New York City"]'):
       
 for first_name,last_name in zip(root.findall('Book/Authors/Author[@Residence="New York City"]/First_Name'),root.findall('Book/Authors/Author[@Residence="New York City"]/Last_Name')):
       print(first_name.text+' '+ last_name.text)
+      
+################################ SQLalchemy
+import cx_Oracle, pandas as pd
+from sqlalchemy import create_engine, exc
+      
+def creator():
+        try:
+                return cx_Oracle.connect("/@QHGSCV10")
+        except cx_Oracle.DatabaseError as exception:
+                print('ERROR Unable to connect to QHGSCV10, mail required\n')
+                printException (exception)
+                exit(2)
+
+e = create_engine("oracle://", creator=creator)
+with e.connect() as conn, conn.begin():
+        cnf_data = pd.read_sql_query('SELECT * FROM EDO_CONF', e)
+for i in cnf_data.index:
+        if cnf_data['sep'][i] == "\\t":
+            .....
+ORACLE_CONNECT = "/@QHGSCV10"
+orcl = cx_Oracle.connect(ORACLE_CONNECT)
+curs = orcl.cursor()
+SQL="SELECT ... where REGEXP_LIKE(FNAME, '" + v + '/' +  re.sub('\'','\'\'',k_PTRN) + "')"
+try:
+        curs.execute(SQL)
+except cx_Oracle.DatabaseError as exception:
+        print('Failed to insert/update \n')
+        printException (exception)
+files_db={row[0]: row[1] for row in curs}
+fn_hash=hashlib.sha256(open(fn, 'rb').read()).hexdigest()
+orcl.commit()
+orcl.close()
