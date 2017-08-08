@@ -318,7 +318,7 @@ def print1(args):
         print ("I am inside 'print1'")
 
 parser = argparse.ArgumentParser(description="DESCR")
-parser.add_argument("-s", "--server", help="server")
+parser.add_argument("-s", "--server", help="server", dest="server")   # pozniej mozna uzyc  if os.path.exists(file_path) and not args.server:
 parser.add_argument("-p", "--port",   help="port",  default=7180)
 parser.add_argument("-t", "--action", help="action", type=int, choices=[1,2,3])
 parser.add_argument("--flag", action="store_true", help="acts as flag")
@@ -363,9 +363,21 @@ print (CM_HOST, CM_PORT)
 config_files = glob.glob(args.config_path)
 for c_file in config_files:
     print("%s :: Loading config: %s".format(c_file) % (str(datetime.now()), format(c_file)))
-    config = ConfigParser()
-    config.read(c_file)
+    config = ConfigParser()     # RawConfigParser(allow_no_value=True, delimiters=('=', '|'))
+    config.read(c_file)         # config.read('c:\\CS\\templates\\table.conf')
 
+#################################### connecting loading template and config parsing
+def load_template(tpl_file):
+    tpl_path = os.path.join(os.path.dirname(__file__), 'templates', tpl_file)
+    return Template(open(tpl_path).read())
+
+def get_section(p_config, p_section):
+    return dict((i[0] , i[1]) for i in p_config.items(p_section))
+    #return OrderedDict((i[0], i[1]) for i in p_config.items(p_section))
+
+import_setting = get_section(config, 'import_setting')
+x = load_template('yml.tpl')
+x = x.substitute(import_setting)      # x.substitute(hour="godzina", sub_group="suuuub")
 ############################### EXECUTING via SSH
       
 print "Checking if Oracle JDK 1.7 is installed"        
@@ -379,6 +391,15 @@ output = Popen(shell_command, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT
 shell_command = ["ssh -t -t " + host + " sudo sed -i.old '\$a\export\ JAVA_HOME\=\/usr\/java\/jdk1.7.0_67-cloudera' /etc/profile"]
 print "Executing " + shell_command        
 output = Popen(shell_command, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True).stdout.read()
+
+##### inny przyklad
+      
+def run_cmd(arg_list):
+        print('Running system cmd:'.format(' '.join(arg_list)))
+        proc=subprocess.Popen(arg_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        s_output,s_err=proc.communicate()
+        s_ret=proc.returncode
+        return s_ret, s_output, s_err
       
 ############################### SUBPROCESS
 from concurrent import futures
