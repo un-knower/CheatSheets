@@ -35,3 +35,15 @@ requests[is_far][['Incident Zip', 'Descriptor', 'City']].sort('Incident Zip')
 #drop columns containing nulls (nan)
 weather_mar2012 = weather_mar2012.dropna(axis=1, how='any')   # axis=1  =columns
 weather_data = weather_data.drop(['Year', 'Day', 'Month', 'Time', 'Data Quality'], axis=1)    # drop specific olumns
+
+
+
+
+#NUMPY
+ax = np.arange(10)    # [0,1,2,3,4,5...]
+ay = ( [ ax , ax ] )  #   2 rows [ [0,1,2,3,4..] , [0,1,2,3...] ]
+np.ones(4)  # [1,1,1,1]
+np.identity(10)   # jedynki w przekatnej
+np.where(ax%2==0, 1, 0)   # if..true else false...
+np.random.normal(size=10)    (size=(100,100))
+np.random.randint(-10,10, size=(9,9)
