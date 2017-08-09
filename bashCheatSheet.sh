@@ -489,7 +489,10 @@ CTRL+Z  # stops the current command, resume with fg in the foreground or bg in t
 !^      # first argument of last command
 !*      # all arguments of last command                # repeat last command with arguments  !!:*
 !:2     # 2nd argument of last command  i.e. echo 111 222 333       echo !:2  = 222,   wich path echo Head: !$:h  Tail: !$:t
-^abc^xxx  # run last command replacing abc with xxx             !!:gs/ehco/echo/
+^abc^xxx  # run last command replacing first occurrence abc with xxx             !!:gs/ehco/echo/
+^y        # removes y from previous command   e.g.  grep rooty /etc/passwd
+^abc^xxx^:&  # run last command replacing all occurences of abc with xxx
+!#:1      # reuse of second word (command is a 0),eg. mv report.txt $(date +%F)-!#:1  -->  mv report.txt $(date +%F)-report.txt
 
 # File Commands.
 ln -s <filename> <link>       # creates symbolic link to file
@@ -617,3 +620,5 @@ IFS=$'\n\t' ###### add after shebang IFS="$(printf '\n\t')"      IFS="`printf '\
 http://www.cs.umsl.edu/~sanjiv/classes/cs2750/lectures/shell.pdf
 http://mywiki.wooledge.org/BashSheet#Arrays
 (screen with Ctrl-A d and tmux with Ctrl-B d). You can reattach (as long as you didnt reboot the server) with screen -x to screen and with tmux attach to tmux.
+# Quickly resume a screen session or start one
+alias dr='screen -dr || screen'
