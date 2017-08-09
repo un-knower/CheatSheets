@@ -9,6 +9,21 @@ weather_mar2012 = pd.read_csv(url, skiprows=15, index_col='Date/Time', parse_dat
 na_values = ['NO CLUE', 'N/A', '0']
 requests = pd.read_csv('../data/311-service-requests.csv', na_values=na_values, dtype={'Incident Zip': str})
 
+df.set_index('first_column', inplace=True)  # will make first column and its values the index inplace.
+df.loc['2017-01-01']  # access row by index value
+df.iloc[0]            # access row by index count 0,1,2,3,4
+df[ [ 'A', 'B' ] ]   # multiple columns
+df.loc['row1', 'col1']  # specific cell
+df.loc['row1']['col1']  # specific cell
+df.loc['row1' : 'row99']                    # slicing - multiple rows
+df.loc['row1' : 'row99' , 'col1':'col10']   # slicing - multiple rows/columns
+
+df.loc['EURUSD']['Change'] = 1.0   # this creates a copy, so will NOT change value in df
+df.loc['EURUSD', 'Change'] = 1.0   # OK, original value
+
+df.pct_change(n=1)      # % change with n previous days
+ma8 = df['Close'].pct_change(13).rolling(window=8).mean()
+
 # find rows containing specific character in column
 rows_with_dashes = requests['Incident Zip'].str.contains('-').fillna(False)
 len(requests[rows_with_dashes])
@@ -37,6 +52,14 @@ weather_mar2012 = weather_mar2012.dropna(axis=1, how='any')   # axis=1  =columns
 weather_data = weather_data.drop(['Year', 'Day', 'Month', 'Time', 'Data Quality'], axis=1)    # drop specific olumns
 
 
+# reading google, yahoo, html etc.
+!pip install pandas-datareader
+!pip install --upgrade html5lib==1.0b8   #bug in latest, so install older
+from panadas-datareader import data
+%matplotlib inline  # for jupyter
+
+df_list = pd.read_html('http://')   # reads tables from html page
+df = df_list[0]
 
 
 #NUMPY
