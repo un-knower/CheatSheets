@@ -392,7 +392,7 @@ shell_command = ["ssh -t -t " + host + " sudo sed -i.old '\$a\export\ JAVA_HOME\
 print "Executing " + shell_command        
 output = Popen(shell_command, shell=True, stdin=PIPE, stdout=PIPE, stderr=STDOUT, close_fds=True).stdout.read()
 
-##### inny przyklad
+## inny przyklad
       
 def run_cmd(arg_list):
         print('Running system cmd:'.format(' '.join(arg_list)))
@@ -400,7 +400,15 @@ def run_cmd(arg_list):
         s_output,s_err=proc.communicate()
         s_ret=proc.returncode
         return s_ret, s_output, s_err
+CMD=['hadoop','jar','/cs/cloudera/parcels/CDH/jars/search-mr-1.0.0-cdh5.7.0-job.jar','org.apache.solr.hadoop.HdfsFindTool','-find',hdfs_path,'-type','f']
+(ret, output, err) = run_cmd(CMD)
       
+## jeszcze inny
+res = subprocess.Popen(PATH_TOSCRIPT, stdout=subprocess.PIPE)
+res.wait()
+print ("os.wait:({},{})".format(res.pid, res.returncode))
+result = res.stdout.read()
+
 ############################### SUBPROCESS
 from concurrent import futures
 from time import sleep
@@ -505,7 +513,7 @@ def creator():
 
 e = create_engine("oracle://", creator=creator)
 with e.connect() as conn, conn.begin():
-        cnf_data = pd.read_sql_query('SELECT * FROM EDO_CONF', e)
+        cnf_data = pd.read_sql_query('SELECT * FROM EDO_CONF', e, index_col=['col_name'])
 for i in cnf_data.index:
         if cnf_data['sep'][i] == "\\t":
             .....
@@ -522,3 +530,14 @@ files_db={row[0]: row[1] for row in curs}
 fn_hash=hashlib.sha256(open(fn, 'rb').read()).hexdigest()
 orcl.commit()
 orcl.close()
+
+#################### LOGGING
+logging.basicConfig(filename='myapp.log', level=logging.INFO, format='%(asctime)s %(message)s'))
+logger = logging.getLogger('name')
+handler = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+      
+      
