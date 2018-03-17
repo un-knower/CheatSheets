@@ -351,20 +351,28 @@ except:
 ##############################      CONFIG PARSER, import configparser
 
 CONFIG = configparser.ConfigParser()
-os.chdir("C:\\CS")
+CONFIG.optionxform = str #preserves CaSe sensitivity
+
+os.chdir("C:\\CM")
 if len(CONFIG.read("clouderaconfig.ini")) < 1:
     print ("Cannot find config.ini")
     #exit(1)
-    
+
+for x in CONFIG.sections():
+    print("SECTION: {}\nDICT {}\nVALUE {}".format(x, dict(CONFIG.items(x)), dict(CONFIG.items(x))['cm.host'] ))
+      
 CM_HOST=CONFIG.get("CM", "cm.host")
 CM_PORT=CONFIG.get("CM", "cm.port")
-print (CM_HOST, CM_PORT)
       
 config_files = glob.glob(args.config_path)
 for c_file in config_files:
     print("%s :: Loading config: %s".format(c_file) % (str(datetime.now()), format(c_file)))
     config = ConfigParser()     # RawConfigParser(allow_no_value=True, delimiters=('=', '|'))
     config.read(c_file)         # config.read('c:\\CS\\templates\\table.conf')
+
+# LOAD TO DICT
+x = {s:dict(CONFIG.items(s)) for s in CONFIG.sections()}
+print("{}".format(x['CM']['cm.host']))
 
 #################################### connecting loading template and config parsing
 def load_template(tpl_file):
