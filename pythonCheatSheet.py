@@ -224,21 +224,44 @@ def create_list(value, size):
     return [value] * size 
 create_list(123, -6)   # tutaj wyrzuci error jak planowane
 
-# another example
+# another decorator example
 def my_decorator(func):
       @functools.wraps(func)
       def function_that_runs_func():
           print ("In the decorator")
           func()
           print ("After decorator")
-      return function_that_runs_func()
+      return function_that_runs_func
 
 @my_decorator
 def my_function():
       print ("I'm the function")
 
 my_function()
-## 
+
+##
+## more complex decorator example with arguments
+def decorator_with_arguments(number):
+    def my_decorator(func):
+          @functools.wraps(func)
+          def function_that_runs_func():
+              print ("In the decorator")
+              if number == 56:
+                  print ("Not executing function")
+              else:
+                  func()
+              print ("After decorator")
+          return function_that_runs_func
+      return my_decorator
+
+@decorator_with_arguments(56)
+def my_function_two():
+      print ("I'm the function")
+
+my_function_two()
+
+      
+      
 # przyklad classmethod, drukuje derived blog zamiast blog  
 class Blog():
   __tablename__ = 'blog'
