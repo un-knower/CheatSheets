@@ -244,19 +244,19 @@ my_function()
 def decorator_with_arguments(number):
     def my_decorator(func):
           @functools.wraps(func)
-          def function_that_runs_func():
+          def function_that_runs_func(*args, **kwargs):
               print ("In the decorator")
               if number == 56:
                   print ("Not executing function")
               else:
-                  func()
+                  func(*args, **kwargs)
               print ("After decorator")
           return function_that_runs_func
       return my_decorator
 
 @decorator_with_arguments(56)
-def my_function_two():
-      print ("I'm the function")
+def my_function_two(x,y):
+      print ("I'm the function", x+y)
 
 my_function_two()
 
