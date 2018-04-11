@@ -235,6 +235,10 @@ class Blog():
   @classmethod
   def other_table_name(cls):
     return cls.__tablename__
+      
+  @staticmethod
+  def other_table_st():   # does not need cls inside as param
+      return 2
 
 class DerivedBlog(Blog):
   __tablename__ = 'derived_blog'
