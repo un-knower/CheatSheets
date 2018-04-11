@@ -241,8 +241,8 @@ class Blog():
       def __init__(self, name, school):
       ....
       @classmethod
-      def friend(cls, origin, friend_name, salary):
-          return cls(friend_name, origin.school, salary)  # anna is origin!   returns invoked class object
+      def friend(cls, origin, friend_name, salary, *args):
+          return cls(friend_name, origin.school, salary, *args)  # anna is origin!   returns invoked class object
       
   class WorkingStudent(Student):
       def __init__(self, name, school, salary):
