@@ -236,6 +236,23 @@ class Blog():
   def other_table_name(cls):
     return cls.__tablename__
       
+## inny przyklad
+  class Student:
+      def __init__(self, name, school):
+      ....
+      @classmethod
+      def friend(cls, origin, friend_name, salary):
+          return cls(friend_name, origin.school, salary)  # anna is origin!   returns invoked class object
+      
+  class WorkingStudent(Student):
+      def __init__(self, name, school, salary):
+        super().__init__(name, school)  # init from Student
+        self.salary = salary
+  
+  anna   = WorkingStudent("Anna", "Oxford", 10.00)
+  friend = WorkingStudent.friend(anna, "Greg", 15.00)
+##
+      
   @staticmethod
   def other_table_st():   # does not need cls inside as param
       return 2
