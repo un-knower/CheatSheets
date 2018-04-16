@@ -102,7 +102,6 @@ timeit(setup="from __main__ import resolve", stmt="resolve('python.org')", numbe
 print("{:f}".format(_))  # drukuje ostatnia odpowiedz
 print("orientation {p[0]:>3}  {o:>2}".format(...)   # max 3 or 2 characters..(rounding up)
 
-
 #CONDITIONAL EXPRESSION
 result = true_value if condition else false_value
 
@@ -110,51 +109,60 @@ result = true_value if condition else false_value
 pp(daily) = [[1,2,3,4], [5,6,7,8], [9,10,11,12]]
 transposed= list(zip(*daily))
 
-# FUNCTION CLOSURE
-def raise_to(exp):
-  def raise_to_exp(x):
-    return pow(x, exp)
-  return raise_to_exp
-cube = raise_to(3)
-cube(3)  #27
-cube(10) #1000
-
 # OWN EXCEPTION must be a class
 class Foo(Exception):
       print("tutaj mozna cos definiowac albo dac pass")
 raise Foo
 except Foo:
       tutaj cos innego mozna robic + to co w klasie i tak sie wykona
+#################################################################################################
+############################ WRAPPING, CLOSURE, DECORATORS
+#################################################################################################
+# WRAPPING
+# nested function printer() was able to access the non-local variable msg of the enclosing function
+def f_print_msg(msg):
+    def printer():
+        print(msg)
+    printer()        # call function
+
+f_print_msg("Hello_from_function")
+
+# FUNCTION CLOSURE EXAMPLE 1
+def print_msg(msg):
+    def printer():
+        print(msg)
+    return printer  #return printer function instead of calling it
+
+another = print_msg("Hello_from_closure")
+another()
       
-############################################## DECORATORS
-#example without decorator
-def get_text(myname):
-    return "lorem ipsum, {0} dolor sit amet".format(myname)
+# FUNCTION CLOSURE EXAMPLE 2
+def raise_to(exp):
+  def raise_to_exp(x):
+    return pow(x, exp)
+  return raise_to_exp
 
-def p_decorate(func):
-    def func_wrapper(myname):
-        return "<p>{0}</p>".format(func(myname))
-    return func_wrapper
+cube = raise_to(3)
+cube(3)  #27
+cube(10) #1000     # print(cube(cube(3)))
 
-my_get_text = p_decorate(get_text)
-print (my_get_text("XXX"))
       
-### example with decorator
-def p_decorate(myfunc):
-    def func_wrapper(name):
-        return "<p>{0}</p>".format(myfunc(name))
-    return func_wrapper
+######################## DECORATOR EXAMPLE 1
+def make_pretty(func):
+    def inner():
+        print("I got decorated")
+        func()
+    return inner
 
-@p_decorate
-def get_text(myname):
-    return "lorem ipsum, {0} dolor sit amet".format(myname)
+@make_pretty            # same as      ordinary = make_pretty(ordinary)
+def ordinary():
+    print("I am ordinary")
 
-print (get_text("Tim"))
-      
-#another      
+
+# DECORATOR EXAMPLE 2 , FOR ALL CASES   
 def escape_unicode(f):
     def wrap(*args, **kwargs):
-        x = f(*args, **kwargs)
+        x = f(*args, **kwargs)  #return f(*args, **kwargs)
         return ascii(x)
     return wrap
 
@@ -162,7 +170,44 @@ def escape_unicode(f):
 def northern_city():
     return 'Tromsø'
 northern_city()   # Troms\\xf8
+      
 
+# DECORATOR WITH PARAMETERS
+def smart_divide(func):
+   def inner(a,b):
+      print("I am going to divide",a,"and",b)
+      if b == 0:
+         print("Whoops! cannot divide")
+         return
+
+      return func(a,b)
+   return inner
+
+@smart_divide
+def divide(a,b):
+    return a/b
+    
+       
+# DECORATOR EXAMPLE 3
+def p_decorate(func):
+    def func_wrapper(myname):
+        return "<p>{0}</p>".format(func(myname))
+    return func_wrapper
+
+# wywolanie bez dekoratora
+def get_text(myname):
+    return "lorem ipsum, {0} dolor sit amet".format(myname)
+
+my_get_text = p_decorate(get_text)
+print (my_get_text("XXX"))
+      
+# wywolanie z dekotatorem
+@p_decorate
+def get_text(myname):
+    return "lorem ipsum, {0} dolor sit amet".format(myname)
+
+print (get_text("Tim"))
+      
 #####################################
 class CallCount:
     def __init__(self, f):
@@ -194,11 +239,12 @@ tracer = Trace()
 @tracer
 def rotate_list(l):                   # l = [1,2,3]
     return l[1:] + [l[0]]             # l = rotate_list(l)
-########################################
+
+######################################## UZYCIE  FUNCTOOLS
 import functools # zeby help(hello) wyswietlalo dobre doc string i help
 
 def noop(f):
-    @functools.wraps(f)      # koniecznie
+    @functools.wraps(f)
     def noop_wrapper():
         return f()
     return noop_wrapper
@@ -239,7 +285,7 @@ def my_function():
 
 my_function()
 
-##
+
 ## more complex decorator example with arguments
 def decorator_with_arguments(number):
     def my_decorator(func):
@@ -259,6 +305,8 @@ def my_function_two(x,y):
       print ("I'm the function", x+y)
 
 my_function_two()
+
+
 
       
       
