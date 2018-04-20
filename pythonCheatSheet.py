@@ -172,7 +172,7 @@ def northern_city():
 northern_city()   # Troms\\xf8
       
 
-# DECORATOR WITH PARAMETERS
+# DECORATOR WITH PARAMETERS IN DECORATED FUNC
 def smart_divide(func):
    def inner(a,b):
       print("I am going to divide",a,"and",b)
@@ -187,7 +187,8 @@ def smart_divide(func):
 def divide(a,b):
     return a/b
     
-       
+
+      
 # DECORATOR EXAMPLE 3
 def p_decorate(func):
     def func_wrapper(myname):
@@ -206,8 +207,25 @@ print (my_get_text("XXX"))
 def get_text(myname):
     return "lorem ipsum, {0} dolor sit amet".format(myname)
 
-print (get_text("Tim"))
+print get_text("Tim")
+
       
+      
+####### DECOREATOR EXAMPLE 4 WITH PARAMETERS PASSED  #######
+def tags(tag_name):
+    def tags_decorator(func):
+        def func_wrapper(name):
+            return "<{0}>{1}</{0}>".format(tag_name, func(name))
+        return func_wrapper
+    return tags_decorator
+
+@tags("p")
+def get_text(name):
+    return "Hello "+name
+
+print get_text("John")       # Outputs <p>Hello John</p>
+      
+          
 #####################################
 class CallCount:
     def __init__(self, f):
