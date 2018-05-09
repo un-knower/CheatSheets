@@ -1,0 +1,11 @@
+{
+    "namespace":"Myorg.com",
+    "type":"record",
+    "name":"User",
+    "fields" : [
+        {"name":"id", "type", "int" },
+        {"name":"name",  "type":"string"},
+        {"name":"last",  "type":"string"},
+        {"name":"phone", "type": [ "null", "string" ] , "default":"null"}
+    ]
+}
