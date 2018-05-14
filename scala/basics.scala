@@ -2,11 +2,117 @@ import Array._
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
+// --------------------- VARIABLES
 val height = 1.9d
-val name = "James"
-println(f"$name%s is $height%2.2f meters tall") //James is 1.90 meters tall
+val name: String = "James"
+val piSinglePrecision: Float = 3.14159265f
+val bigNumber: Long = 1234567890
+val smallNumber: Byte = 127
+
+// --------------------- PRINT
+println(f"$name%s is $height%2.2f meters tall")       //James is 1.90 meters tall
+println(f"Zero padding on the left: $numberOne%05d")  // 00001
+println(s"Use s prefix $numberOne $truth")
 println(s"1 + 1 = ${1 + 1}")
 println(raw"Result = \n a \n b")
+
+// ---------------------- REGEX
+val UltimateAnswer: String = "To life everything is 42"
+val pattern = """.* ([\d]+).*""".r        //search for first number
+val pattern(result_goes_here) = UltimateAnswer
+val answer = result_goes_here.toInt
+
+import scala.util.matching.Regex
+val str = "Scala is scalable and cool"
+val pattern2 = "Scala".r
+val pattern = new Regex("(S|s)cala")
+
+println(pattern2.findAllIn(str).mkString(","))
+println(pattern.findAllIn(str).mkString(":::::"))
+println(pattern.replaceFirstIn(str, "Java"))
+// https://www.tutorialspoint.com/scala/scala_regular_expressions.htm
+val quote = """I don't like to commit myself about heaven and hell - you see, I have friends in both places."""
+val expr = "e".r
+expr.replaceAllIn(quote, "**")  //same as
+quote.replaceAll("e", "**")     //same as
+expr.replaceAllIn(quote, s => if(util.Random.nextBoolean) "?" else "*")    // raz ? raz *
+expr.replaceAllIn(quote, m => m.start.toString)  //I don't lik11 to commit mys26lf about h37av40n and h48ll - you s5960, I hav68 fri73nds in both plac90s.
+expr.replaceSomeIn(quote,m => if(m.start>50) None else Some("-")) //I don't lik- to commit mys-lf about h-av-n and h-ll - you see, I have friends in both places.
+
+
+
+// --------------------- BOOLEAN
+val imposs = isGreater & isLesser     // both expressions are evaluated !
+val imposs = isGreater && isLesser     // left expression is evaulated first, better performance
+val x : Boolean =  val1 == val2       // compares values and assigns true
+
+
+// --------------------- MATCHING
+val number : Int = 3
+number match {
+  case 1 => println("one")
+  case _ => println("none")
+}
+
+
+// --------------------- LOOPS
+do { println(x); x+=1 } while (x <= 10)
+
+
+
+// ----------------------- TUPLE ------- (can hold 22 objects with different types),  immutable lists, can hold different types
+val t = (1, "hello", Console)
+val (a,b,c) = t
+val suma =  t._1  +  t._2  +  t._3 
+t.productIterator.foreach{ i => println("Value = " + i )}
+
+// can be created with k/v pair with ->
+val pair = "key" -> "value"
+println(pair._2)    // value
+
+
+
+// ------------------- LISTS ----------------------, can not hold items of different types
+list.head   //returns 1st item
+list.tail   //returns list of remaining items List[String] = List[a,b,c....]
+
+// iterating through a list
+for (ship <- shipList) { println(ship) }
+
+val backwardShips = shipList.map( (ship: String) => { ship.reverse} )   // reverse each ship
+
+val numberedList = List(1,2,3,4,5)
+val sum = numberedList.reduce( (x: Int, y: Int) => x + y)   //15
+val noFives = numberedList.filter( (x: Int) => x != 5)
+val noThree = numberedList.filter( _ != 3)
+
+// concatenating lists, distinct, contains
+val lotsOfNumbersDuplicates = list1 ++ list2
+val distinctValues = lotsOfNumbersDuplicates.distinct  // List[Int] = List....
+val hasThree = distinctValues.contains(3)   // true
+
+val dim: List[List[Int]] =
+List(
+  List(1, 0, 0),
+  List(0, 1, 0),
+  List(0, 0, 1)
+)
+val list = 1 :: 2 :: 3 :: Nil   // List(1,2,3)
+val fruits = "apples" :: ("oranges" :: ("pears" :: Nil))   //new ::(0, new ::(1,List.empty))
+val fruit2 = fruits.map(name => <li>{name}</li>)        //List(<li>Fred</li>, <li>Joe</li>, <li>Bob</li>)
+val nums = 1 :: (2 :: (3 :: (4 :: Nil)))
+val emptyy = Nil
+val x4 = List[Number](1, 2.0, 33d, 0x1)
+val dimm = (1 :: (0 :: (0 :: Nil))) ::
+  (0 :: (1 :: (0 :: Nil))) ::
+  (0 :: (0 :: (1 :: Nil))) :: Nil
+// List1.concat(List2)      List1:::List2     List1 .:::(List2)       c = List.concat(List1, List2)      c = a ++ b
+val list3 = List.range(1, 10,2)
+val x5 = List.fill(3)("foo")
+val squares = List.tabulate(6)(n => n * n)
+val mul = List.tabulate( 4,5 )( _ * _ )   // List(List(0, 0, 0, 0, 0), List(0, 1, 2, 3, 4), List(0, 2, 4, 6, 8), List(0, 3, 6, 9, 12))
+val y7: Seq[Any] = 0 :: x4  // dodaje PRZED x4, czyli jako zerowy element
+
 
 val xs = List(1,2,3,4,5,6,7,8,9,10,11,12) ; val ys = List(13,14,15)
 val g = xs.grouped(3)
@@ -21,6 +127,51 @@ it.next()
 val x = List(1,2,3)
 val y = List(4,5,6)
 List.concat(x,y).zipWithIndex           // List[(Int, Int)] = List((1,0), (2,1), (3,2), (4,3), (5,4), (6,5))
+
+
+// ------------------- MAPS ---- (dictionaries)
+val shipMap = Map("key1" -> "val1",  "key2" -> "val2")
+print(shipMap.contains("key1"))   //false
+val ship1 = util.Try(shipMap("key1")) getOrElse "Unknown"
+
+var A:Map[Char,Int] = Map() // empty map
+A += ( 'K' -> 1)
+val colors = Map("red" -> "#FF0000", "azure" -> "#F0FFFF")
+val movies = Map('a' -> 1, 'b' -> 10, 'c' -> 100)
+Map(("x",1), ("y",2)).apply("x")    //.get("x) returns Some(1)
+Map(("x",1), ("y",2)).get("x")
+Map(("z",1)) + ("zz"->2)
+// concatenating    Map1 ++ Map2            Map1.++(Map2)
+// iterate over Map
+for ((k,v) <- colors) printf("key: %s, value: %s\n", k, v)
+colors foreach (x => println (x._1 + "-->" + x._2)) // movies.keys.foreach( (movie) => if (movies.contains(movie)) similarItems += (movie -> true))
+                                                    // for ((movie1, rating1) <- movies) { if (movies.contains(movie1)) similarItems += (movie1 -> true) }
+colors foreach {case (key, value) => println (key + "-->" + value)}
+colors map { case (k,v) => s"$k is $v" }
+(xs zip ys) map { case (x,y) => x*y }
+val myMap = Map("I" -> 1, "V" -> 5, "X" -> 10)  // create a map
+myMap("I")      // => 1
+myMap("A")      // => java.util.NoSuchElementException
+myMap get "A"   // => None
+myMap get "I"   // => Some(1)
+
+
+
+// -------------- SETS
+var set1 : Set[Int] = Set()
+Set('a', 'b', 'c', 'a')('b')  //Sets are Iterables that contain no duplicate elements
+Set()('a')
+Seq(1,2,3,4,5).+:("6")
+val dupa = Seq.fill(5) { "s" }
+val dupa1= Seq.iterate(1, 5) { i => i *3 }
+// concatenate --->       Set1 ++ Set2        // Set1.++(Set2)
+// intersect  ---->       Set1.& Set2         Set1.intersect(Set2)
+val fruit = Set("apple", "banana", "berry", "cherry") & Set("cherry")
+fruit.+("dupa")
+Map.empty ++ List(("a", 1), ("b", 2), ("c", 3))  //  Map((a,1), (b,2), (c,3))
+
+
+
 
 ////// FOR COMPREHENSION //////
 for ((e, count) <- xs.zipWithIndex) { println(s"$count is $e") }
@@ -58,18 +209,7 @@ for (i <- 1 until n; j <- 1 until i if isPrime(i + j))
 //Multiple assignments
 val (myVar1: Int, myVar2: String) = Pair(40, "Foo")
 
-///////////////////////   SET    /////////////////////////////
-var set1 : Set[Int] = Set()
-Set('a', 'b', 'c', 'a')('b')  //Sets are Iterables that contain no duplicate elements
-Set()('a')
-Seq(1,2,3,4,5).+:("6")
-val dupa = Seq.fill(5) { "s" }
-val dupa1= Seq.iterate(1, 5) { i => i *3 }
-// concatenate --->       Set1 ++ Set2        // Set1.++(Set2)
-// intersect  ---->       Set1.& Set2         Set1.intersect(Set2)
-val fruit = Set("apple", "banana", "berry", "cherry") & Set("cherry")
-fruit.+("dupa")
-Map.empty ++ List(("a", 1), ("b", 2), ("c", 3))  //  Map((a,1), (b,2), (c,3))
+
 
 ////// ORDERING //////
 object DescendingAlphabetOrdering extends Ordering[String]{
@@ -82,27 +222,6 @@ def msort[T](xs: List[T])(implicit ord: Ordering) = {...}
 msort(fruit.toList)(Ordering.String)
 msort(fruit.toList)
 
-//////   MAP    //////
-var A:Map[Char,Int] = Map() // empty map
-A += ( 'K' -> 1)
-val colors = Map("red" -> "#FF0000", "azure" -> "#F0FFFF")
-val movies = Map('a' -> 1, 'b' -> 10, 'c' -> 100)
-Map(("x",1), ("y",2)).apply("x")    //.get("x) returns Some(1)
-Map(("x",1), ("y",2)).get("x")
-Map(("z",1)) + ("zz"->2)
-// concatenating    Map1 ++ Map2            Map1.++(Map2)
-// iterate over Map
-for ((k,v) <- colors) printf("key: %s, value: %s\n", k, v)
-colors foreach (x => println (x._1 + "-->" + x._2)) // movies.keys.foreach( (movie) => if (movies.contains(movie)) similarItems += (movie -> true))
-                                                    // for ((movie1, rating1) <- movies) { if (movies.contains(movie1)) similarItems += (movie1 -> true) }
-colors foreach {case (key, value) => println (key + "-->" + value)}
-colors map { case (k,v) => s"$k is $v" }
-(xs zip ys) map { case (x,y) => x*y }
-val myMap = Map("I" -> 1, "V" -> 5, "X" -> 10)  // create a map
-myMap("I")      // => 1
-myMap("A")      // => java.util.NoSuchElementException
-myMap get "A"   // => None
-myMap get "I"   // => Some(1)
 
 ////////////////////////  ARRAY   ///////////////////////////
 // compabitle with Seq,stores a fixed-size sequential collection of elements of the same type.
@@ -127,11 +246,7 @@ buf += 10
 buf.toArray
 
 
-/////////////////////////  TUPLE  /////////////////////////can hold 22 objects with different types
 
-val t = (1, "hello", Console)   // val (a,b,c) = t
-val suma = t._1 + t._2 + t._3
-t.productIterator.foreach{ i =>println("Value = " + i )}
 
 
 ///////////////////////  OPTIONS  ///////////////////////// zero or one element of a given type.
@@ -173,28 +288,7 @@ val sum4= bag.map(toInt).collect{case Some(i) => i}
 @throws(classOf[NumberFormatException])     // declare that your method can throw an exception
 def toIntt(s: String) = s.toInt
 
-//////////////////////  LIST  ///////////////////////////
-val dim: List[List[Int]] =
-List(
-  List(1, 0, 0),
-  List(0, 1, 0),
-  List(0, 0, 1)
-)
-val list = 1 :: 2 :: 3 :: Nil   // List(1,2,3)
-val fruits = "apples" :: ("oranges" :: ("pears" :: Nil))   //new ::(0, new ::(1,List.empty))
-val fruit2 = fruits.map(name => <li>{name}</li>)        //List(<li>Fred</li>, <li>Joe</li>, <li>Bob</li>)
-val nums = 1 :: (2 :: (3 :: (4 :: Nil)))
-val emptyy = Nil
-val x4 = List[Number](1, 2.0, 33d, 0x1)
-val dimm = (1 :: (0 :: (0 :: Nil))) ::
-  (0 :: (1 :: (0 :: Nil))) ::
-  (0 :: (0 :: (1 :: Nil))) :: Nil
-// List1.concat(List2)      List1:::List2     List1 .:::(List2)       c = List.concat(List1, List2)      c = a ++ b
-val list3 = List.range(1, 10,2)
-val x5 = List.fill(3)("foo")
-val squares = List.tabulate(6)(n => n * n)
-val mul = List.tabulate( 4,5 )( _ * _ )   // List(List(0, 0, 0, 0, 0), List(0, 1, 2, 3, 4), List(0, 2, 4, 6, 8), List(0, 3, 6, 9, 12))
-val y7: Seq[Any] = 0 :: x4  // dodaje PRZED x4, czyli jako zerowy element
+
 
 
 /////////////////////// STREAM ///////////////////////////////////////////////////////

@@ -6,9 +6,7 @@ import org.apache.spark.sql.types.DataTypes.*
 import org.apache.spark.sql._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.SparkSession 
-import org.apache.spark.SparkConf 
-import org.apache.spark.SparkContext 
-import org.apache.spark.SparkContext._ 
+import org.apache.spark.{SparkConf , SparkContext , Accumulator , rdd._, SparkContext._ }
 import org.apache.spark.sql.types.{DoubleType, StringType, StructField, StructType} 
 import org.apache.spark.sql.types._ 
 import org.apache.spark.sql.{Row, SparkSession}	// SchemaRDD? 
@@ -31,8 +29,9 @@ import org.apache.hadoop.io.Text
 import org.apache.hadoop.conf.Configuration 
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat 
 
-
-// ***************************** PARAMETERS ********************************
+// -------------------------------------------------------------------------
+// ---------------------------------- PARAMETERS ---------------------------
+// -------------------------------------------------------------------------
 val conf = new SparkConf()  //  .setMaster("local").setAppName("My App") 
 conf.set("spark.app.name", "My Spark App") 
 conf.set("spark.master", "local[4]") 
@@ -49,6 +48,7 @@ sc.getConf.toDebugString
 
 
 val sc = new SparkContext(conf) 
+  val sc = new SparkContext(master, "GeoIpExample". System.getenv("SPARK_HOME"), Seq(System.getenv("JARS")))    // zamiast master  -->   local[*]
 val hiveCtx = new HiveContext(sc) 
 val sqlCtx  = new SQLContext(sc) //depreciated 
 import hiveCtx._ 
@@ -57,21 +57,18 @@ object myApp {
   def main(args: Array[String]) { 
 	val sparkSession = SparkSession
         .builder() 
-        .master("local") 
+        .master("local[*]") 
         .appName("example") 
         .config("spark.some.option", "true") 
-        .config("spark.sql.warehouse.dir", warehouseLocation)   //hive 
+        .config("spark.sql.warehouse.dir", "file:///C:/temp")   //hive 
         .enableHiveSupport()                                	//hive 
         .getOrCreate() 
 
-val sc = new SparkContext(master, "GeoIpExample". System.getenv("SPARK_HOME"), Seq(System.getenv("JARS")))
-sparkSession.setConf("xxxx", "yyyy") 
+    import sparkSession.implicits._
+    sparkSession.setConf("xxxx", "yyyy") 
 
-val sparkContext = sparkSession.sparkContext 
-import sparkSession.implicits._
-
-
-
+    val sc = sparkSession.sparkContext  // 2.0+
+    
 
 // configuration parameters
 spark.sql.retainGroupColumns = false
@@ -195,7 +192,7 @@ object Detector {
         
     if(financesDS.hasColumn("_corrupt_record")) {
         financesDS.where($"_corrupt_record".isNotNull)
-        .select($"_corrupt_record)
+        .select($"_corrupt_record")
         .write.mode(SaveMode.Overwrite).text("Output/corrupt_finance")
     }
     
@@ -269,7 +266,6 @@ val jsonCompanies = List(
 
 
 
-
 // SESSIONS
 spark.newSession  // creates copy of session, separate from previous
 SparkSession.setActiveSession(copiedSession)
@@ -314,6 +310,12 @@ schema = StructType([
 df3 = sqlContext.createDataFrame(rdd, schema)
 df3.collect()
 // [Row(name=u'Alice', age=1)]
+
+// FRANK
+val colNames = Seq("label", "features")
+val df = dataRDD.toDF(colNames: _*)
+
+
 
 sqlContext.createDataFrame(df.toPandas()).collect()  # doctest: +SKIP
 // [Row(name=u'Alice', age=1)]
@@ -394,57 +396,28 @@ display(testJsonDataWithBadRecord.where("_corrupt_record is not null"))
 
 
 
-// ******************************  UDF  ********************************** // org.apache.spark.sql.java.api.UDF1 - UDF22 (# of params!)
-// OPTION 1
+// ----------------------------------------------------------------------------------------------------
+// ------------------------------  UDF  ---------------------------------- org.apache.spark.sql.java.api.UDF1 - UDF22 (# of params!)
+// ----------------------------------------------------------------------------------------------------
+// http://blog.cloudera.com/blog/2017/02/working-with-udfs-in-apache-spark/    UDAF
+
+// OPTION 1 - z nowej funkcji
 spark.udf.register("capitalizeFirstLetter", (fullString: String) => fullString.split(" ").map(_.capitalize).mkString(" ")) 
+spark.udf.register("myUpper", (x:String) => x.toUpperCase)
+sqlContext.udf.register("CTOF", (degreesCelcius: Double) => ((degreesCelcius * 9.0 / 5.0) + 32.0)) 
+sqlContext.udf.register("CTOF", (degreesCelcius: Double) => if (costam ==0) 0 else costam/costam ) 
+sqlContext.sql("SELECT city, CTOF(avgLow) AS avgLowF, CTOF(avgHigh) AS avgHighF FROM citytemps").show() 
+
+spark.catalog.listFunctions.filter('name like "%upper%").show(false)
 sampleDF.select($"id", callUDF("capitalizeFirstLetter", $"text").as("text")).show
-// OPTION 2
+
+// OPTION 2     org.spache.spark.sql.functions.udf
 val capitalizerUDF = udf((fullString: String, splitter: String) => fullString.split(splitter).map(_.capitalize).mkString(splitter))
 sampleDF.select($"id", capitalizerUDF($"text",      " ").as("text")).show   // WRONG !! require column type!
 sampleDF.select($"id", capitalizerUDF($"text", lit(" ")).as("text")).show   // OK
 
-// SMART JOINING
-// UDF is a black box for Spark, so it needs to scan whole set
-val  eqUDF = udf( (x:Int, y:Int) => x == y)
-df1.join(df2, eqUDF($"x", $"y"))   // this is CARTESIAN + FILTER    n^2   , super bad
-df1.join(df2, $"x" === $"y")       // SortMergeJoin                 n log n   optimized, very good!  use build in functions
-
-
-registerFunction("strLenScala", (_: String).length) 
-val tweetLength = hiveCtx.sql("SELECT strLenScala('tweet') FROM tweets LIMIT 10") 
- 
-Using a Hive UDF requires that we use the HiveContext instead of a regular SQLContext.
-To make a Hive UDF available, simply call hiveCtx.sql("CREATE TEMPORARY FUNCTION name AS class.function")  
-
-val upper: String => String = _.toUpperCase
-val upperUDF = org.spache.spark.sql.functionsjjjj.udf(upper)
-
-// inna metoda
-spark.udf.register("myUpper", (x:String) => x.toUpperCase)
-spark.catalog.listFunctions.filter('name like "%upper%").show(false)
-
-
- // z istniejacej funkcji
-val squared = (s: Int) => { 
-  s * s 
-} 
-sqlContext.udf.register("square", squared)	// albo   squared _) 
-  
-sqlContext.range(1, 20).registerTempTable("test") 
-select id, square(id) as id_squared from test 
- 
-val volumeUDF = udf {
- (width: Double, height: Double, depth: Double) => width * height * depth
-}
-ds.withColumn("volume", volumeUDF($"width", $"height", $"depth"))
-
- // z nowej funkcji
-sqlContext.udf.register("CTOF", (degreesCelcius: Double) => ((degreesCelcius * 9.0 / 5.0) + 32.0)) 
-sqlContext.udf.register("CTOF", (degreesCelcius: Double) => if (costam ==0) 0 else costam/costam ) 
-sqlContext.sql("SELECT city, CTOF(avgLow) AS avgLowF, CTOF(avgHigh) AS avgHighF FROM citytemps").show() 
- 
 val add_n = udf((x: Integer, y: Integer) => x + y)
-df = df.withColumn("id_offset", add_n(lit(1000), col("id").cast("int")))
+df = df.withColumn("id_offset", add_n(lit(1000), col("id").cast("int")))    // ds.withColumn("volume", volumeUDF($"width", $"height", $"depth"))
 ------------
 val last_n_days = udf((x: Integer, y: Integer) => {
   if (x < y) true else false
@@ -453,6 +426,36 @@ val df_filtered = df.filter(last_n_days(col("date_diff"), lit(90)))
 -----------
 val toHour   = udf((t: String) => "%04d".format(t.toInt).take(2).toInt )
 -----------
+
+ // OPTION 3 - z istniejacej funkcji  register
+val squared = (s: Int) => {  s * s  } 
+sqlContext.udf.register("square", squared)  // albo   squared _) 
+  
+sqlContext.range(1, 20).registerTempTable("test") 
+select id, square(id) as id_squared from test 
+
+// OPTION 4 - z istniejacej funkcji  sql.functions.udf
+val upper: String => String = _.toUpperCase
+val upperUDF = udf(upper) 
+val square = (x => x*x)
+squaredDF = df.withColumn("squarecol", square("val"))
+
+// SMART JOINING
+// UDF is a black box for Spark, so it needs to scan whole set
+val  eqUDF = udf( (x:Int, y:Int) => x == y)
+df1.join(df2, eqUDF($"x", $"y"))   // this is CARTESIAN + FILTER    n^2   , super bad
+df1.join(df2, $"x" === $"y")       // SortMergeJoin                 n log n   optimized, very good!  use build in functions
+
+registerFunction("strLenScala", (_: String).length) 
+val tweetLength = hiveCtx.sql("SELECT strLenScala('tweet') FROM tweets LIMIT 10") 
+ 
+Using a Hive UDF requires that we use the HiveContext instead of a regular SQLContext.
+To make a Hive UDF available, simply call hiveCtx.sql("CREATE TEMPORARY FUNCTION name AS class.function")  
+
+
+
+ 
+
 
 
 
@@ -516,8 +519,6 @@ impressionsWithWatermark.join(
 
 
 
-
-
 // ****************************** WINDOWING *******************************
 case class Status(id:Int, customer:String, status:String)
 val statuses = spark.createDataFrame(List(Status(1, "Justin", "New"), Status(2, "A", "Open"), Status(3, "B", "Resolved")))
@@ -538,7 +539,6 @@ statuses.select($"id", $"customer", $"status", lag($"status", 1, "N/A").over(Win
 
 
 
-// ******************************** STREAMING *****************************
 val financeDFwindowed = financeDF.select($"*", window($"Date", "30 days", "30 days", "15 minutes")
 // splits Date into window buckets based on 3 params:            length  slide length    offset
 financeDFwindowed.groupBy($"window", $"AccountNumber").count.show(truncate=false)
@@ -546,18 +546,144 @@ financeDFwindowed.groupBy($"window", $"AccountNumber").count.show(truncate=false
 // [2015-03-05 19:15:00, 2015-03-05 20:15:00]   222-333-444     5
 
 
-import org.apache.spark.sql.functions._
-spark.conf.set("spark.sql.shuffle.partitions", "1")
-//databricks  generate fake data streams using our built-in "rate stream", that gen. data at a given fixed rate.
-val impressions = spark
-  .readStream.format("rate").option("rowsPerSecond", "5").option("numPartitions", "1").load()
-  .select($"value".as("adId"), $"timestamp".as("impressionTime"))
 
-val clicks = spark
-  .readStream.format("rate").option("rowsPerSecond", "5").option("numPartitions", "1").load()
-  .where((rand() * 100).cast("integer") < 10)       // 10 out of every 100 impressions result in a click
-  .select(($"value" - 50).as("adId"), $"timestamp".as("clickTime"))   // -100 so that a click with same id as impression is generated much later.
-  .where("adId > 0")  
+
+
+// FRANK
+
+def parseLine(line: String) = {
+    val fields = line.split(",")
+    val age = field(2).toInt
+    val num = field(3).toInt
+    (age, num)  // return tuple
+}
+
+val rdd = sc.textFile(....).map(parseLine)
+val totalByAge = rdd.mapValues(x => (x,1)).reduceByKey( (x,y) => (x._1 + y._1 , x._2 + y._2))
+//              (33, 385) => (33, (385, 1))                     (33, (387, 2))
+//              (33, 2  ) => (33, (2,   1))
+val averageByAge = totalByAge.mapValues(x => x._1 / x._2)
+//              (33, (387, 2)) =>  (33, 193.5)
+val results = averageByAge.collect()
+results.sorted.foreach(println)
+
+
+val wordCounts = lowercaseWords.map( x => (x,1) ).reduceByKey( (x,y) => x+y )
+val wordCountsSorted = worsCounts.map( x => (x._2, x._1)).sortByKey()           // numeric first
+
+
+import scala.io.Codec
+import scala.io.Source
+import java.nio.charset.CodingErrorAction
+// read file with movie id and title and transmit as broadcast (just once)
+def loadMovieNames() : Map[Int, String] = {
+    implicit val codec = Codes("UTF-8")
+    codec.onMalformedInput(CodingErrorAction.REPLACE)
+    codec.onUnmappableCharacter(CodingErrorAction.REPLACE)
+
+    // create Map of Ints to Strings
+    val movieNames:Map[Int, String] = Map()
+    val lines = Source.fromFile("../ml-100k/u.item").getLines()
+    for (line <- lines) {
+        var fields = line.split('|')
+        if (fields.length > 1) {
+            movieNames += (fields(0).toInt -> fields(1))
+        }
+    }
+    return movieNames   //dict!
+}
+
+// pozniej w main....
+val nameDict = sc.broadcast(loadMovieNames)
+val sortedMoviesWithNames = sortedMovies.map( x => (nameDict.value(x._2), x._1) )   // szukamy tytulu w broadcast dla ID filmu
+
+
+def parseNames(line: String) : Option[(Int, String)] = {
+    var fields = line.split('\"')
+    if (fields.length > 1) {
+        return Some(fields(0).trim().toInt, fields(1))      //  (ID, name)
+    } else {
+        return None 
+    }
+}
+
+def countCoOccurences(line: String) = {
+    // linia ma same ID, przy czym pierwszy to glowny, a pozostale to "Friends"   435 546546 456453 34645 34654 , wiec je zliczamy
+    var elements = line.split("\\s+")  // whitespaces
+    ( elements(0).toInt,  elements.length -1)
+}
+
+val namesRDD = names.flatMap(parseNames)
+val mostPopular = flipped.max()
+// pozniej szukamy max, a pozniej co to bylo za imie
+val mostPopularName = namesRDD.lookup(mostPopular._2)(0) // lookup returns array, so we need 1st item (0)
+
+
+import scala.collection.mutable.ArrayBuffer
+val connections: ArrayBuffer[Int] = ArrayBuffer()
+for (connection <- 1 to (fields.length -1)) {
+    connections += fields(connection).toInt
+}
+return (hero, (connections.toArray, distance, color))
+
+
+val hitCounter : Option[AccumulatorLong] = None
+if (hitCounter.isDefined) {
+    hitCounter.get.value  // for fun
+    hitCounter.get.add(1)
+}
+// custom data types
+type BFSData = (Array[Int], Int, String)        // array of hero ID connections, distance and color
+type BFSNode = (Int, BFSData)
+
+def createStartingRdd(sc:SparkContext): RDD[BFSNode] = {
+    val inputFile = sc.textFile(...)
+    return inputFile.map(convertToBFS)
+}
+// pozniej w main inicjujemy
+hitCounter = Some(sc.accumulator(0))
+
+
+val ratings = data.map(l => l.split("\t")).map(l => (l(0).toInt,  (l(1).toInt, l(2).toDouble)  ))       // userID => (movieID, rating)
+val joinedRatings = ratings.join(rating)    // self-join, will get every possible PAIR permutation, i.e.  ABC  =>  AA, AB, AC, BA, BB, BC....
+//  RDD consists of   userID => ((movieID, rating), (movieID, rating))
+
+type MovieRating = (Int, Double)
+type UserRatingPair = (Int, (MovieRating, MovieRating))
+def makePairs(userRatings:UserRatingPair) = {
+    val movieRating1 = userRatings._2._1
+    val movieRating2 = userRatings._2._2
+
+    val movie1 = movieRating1._1
+    val rating1 = movieRating1._2
+    val movie2 = movieRating2._1
+    val rating2 = movieRating2._2
+
+    ((movie1, movie2), (rating1, rating2))
+}
+// groupByKey:     (movie1, movie2) => (rating1, rating2), (rating1, rating2)
+
+val moviePairs = uniqueJoinedRatings.map(makePairs).partitionBy(new HashPartitioner(100))
+
+
+case class Person(ID: Int, name:String, age:Int, numFriends:Int)
+def mapper(line: String) : Person = {
+    val fields = line.split(',')
+    val person:Person = Person(fields(0).toInt, fields(1), fields(2).toInt, fields(3).toInt)
+    return person
+}
+val lines = sparkSession.sparkContext.textFile(....)       .map(x => Movie(x.split("\t")(1).toInt))        // najpierw RDD, zeby pozniej convert to DS
+val people = lines.map(mapper)
+val peopleDS = people.toDS()
+val userRatings = ratings.filter(x => x.user == userID)  // userID = args(0).toInt
+
+
+
+
+
+
+
+
 
 
 

@@ -230,6 +230,16 @@ for f in "$@"
     script.sh "$f"
   done
 
+  
+for i in 1 2 3 4 5
+do
+	head -`expr $i \* 20000` u.data | tail -20000 > tmp.$$
+	sort -t"	" -k 1,1n -k 2,2n tmp.$$ > u$i.test
+	head -`expr \( $i - 1 \) \* 20000` u.data > tmp.$$
+	tail -`expr \( 5 - $i \) \* 20000` u.data >> tmp.$$
+	sort -t"	" -k 1,1n -k 2,2n tmp.$$ > u$i.base
+done
+
 
 # READ FILE CONTENT
 while read -r line;do echo "$line";done < file
@@ -396,7 +406,7 @@ SECONDS=0
 sleep 10
 duration=$SECONDS
 echo "$(($duration / 60)) minutes and $(($duration % 60)) seconds elapsed."
-ELAPSED="Elapsed: $(($SECONDS / 3600))hrs $((($SECONDS / 60) % 60))min $(($SECONDS % 60))sec
+ELAPSED="Elapsed: $(($SECONDS / 3600))hrs $((($SECONDS / 60) % 60))min $(($SECONDS % 60))sec"
 
 START=$(date +%s.%N)
 sleep 1
@@ -459,6 +469,7 @@ trap returntrap RETURN  # is executed each time a shell function or a script exe
 TEMP_FILE=$TEMP_DIR/printfile.$$.$RANDOM
 PROGNAME=$(basename $0)
 trap "rm -f $TEMP_FILE; exit" SIGHUP SIGINT SIGTERM   # deletes file if stopped by user
+trap `rm -f tmp.$$; exit 1` 1 2 15
 
 tf=/tmp/tf.$$                      # DFOUT=/tmp/${0##*/}.$$.tmp 
 cleanup() {  rm -f $tf  }
