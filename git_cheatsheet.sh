@@ -16,7 +16,7 @@ git rm --cached <file>    # to rm from staging area
 git commit -am "comment"  # commits ALL (a)
 git remote remove origin
 git remote add origin  git@github.com:kklapec/test-repo.git #SSH (pub)
-git push -u origin master  # git push --set-upstream origin master
+git push -u origin master  # --set-upstream
 
 git pull 		#download changes from remote repo
 
