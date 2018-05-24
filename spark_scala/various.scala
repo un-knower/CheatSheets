@@ -234,6 +234,10 @@ object Detector {
         .coalesce(5)
         .write.mode(...)
 
+
+
+
+
     // **************** WINDOW WINDOWING BASED FUNCTIONS ************
     import org.apache.spark.sql.expressions.Window
     val accountNumberPrevious4WindowSpec = Window.partitionBy($"AccountNumber")
@@ -258,10 +262,34 @@ object Detector {
     }
 }
 
+// PYTHON
+access_log.select("ip", "unixtime", f.count("*").over(Window.partitionBy("ip")).alias("cnt")).limit(5) //counts number of clicks for each IP address, same rows will have same duplicated count
+access_log.select("ip", "unixtime", f.count("*").over(Window.partitionBy("ip").orderBy("unixtime")).alias("cnt")).limit(5)
+// this allows new set of functions, e.g.  lag() -> returns one before,   or  lead() -> returns one after,       row_number() -> returns row number
+user_window = Window.orderBy("unixtime").partitionBy("ip")
+access_log.select("ip", "unixtime", f.row_number().over(user_window).alias("count"),
+                                f.lag("unixtime").over(user_window).alias("lag"),
+                                f.lead("unixtime").over(user_window).alias("lead")) \
+            .select("ip","unixtime", (f.col("lead")-f.col("unixtime")).alias("diff")) \
+            .where("diff >= 1800 or diff is NULL").limit(5)
+
+
+
+
+
 scala> :pa    PASTE MODE
 val jsonCompanies = List(
 """{"company":"NewCo", "employees":[...]}"""
 
+// PIVOT function
+// 1. we need list of column headers in result table, so we take them, e.g. 5 most popular URL
+top_url_pd = access_log.groupBy("url").count().orderBy(f.col("count").desc()).limit(1000).toPandas()
+// 2. convert to Pandas List
+top_url_list = top_url_pd["url"].tolist()           [u'/favicon.ico', u'/header.jpg', ...]
+// 3. get most popular IPs 
+access_log.groupBy("ip").count().toPandas())  // just for demo of results
+// 4. apply pivot function
+access_log.groupBy("ip").pivot("url", top_url_list).fillna(0).count().limit(5).toPandas()
 
 
 
@@ -453,7 +481,12 @@ Using a Hive UDF requires that we use the HiveContext instead of a regular SQLCo
 To make a Hive UDF available, simply call hiveCtx.sql("CREATE TEMPORARY FUNCTION name AS class.function")  
 
 
+// regex
+re.sub("/?[\d_.]+", "")              re.sub("[;\(\):,]*", "")
+parser_agent_udf = f.udf(parser_agent, t.ArrayType(t.StringType()))
 
+in SQL:
+spark_session.udf.register("parser_agent", parser_agent, t.ArrayType(t.StringType()))
  
 
 
@@ -679,6 +712,10 @@ val userRatings = ratings.filter(x => x.user == userID)  // userID = args(0).toI
 
 
 
+
+// ****************************** TIME FUNCTIONS *******************************
+access_log.withColumn("unixtime", f.unix_timestamp("timecolumn","dd/MMM/yyyy:HH:mm:ss Z"))  // returns epoch
+access_log.withColumn("unixtime", f.unix_timestamp("timecolumn","dd/MMM/yyyy:HH:mm:ss Z")).astype("timestamp")  // returns 2015-11-11 11:11:11
 
 
 
