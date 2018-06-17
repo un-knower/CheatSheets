@@ -202,3 +202,42 @@ hadoop fs -cat output/part-00000 | head
 
 # ssh -f -N -L 50030:localhost:50030 user@digitalocean
 #https://gist.github.com/krishna209
+
+############################ UPGRADING JAVA on CM
+# stop CM, stop server (from GUI)
+service cloudera-scm-agent stop		# stop agent on ALL NODES !!!
+service cloudera-scm-server stop	# on CM server only
+
+# download JAVA easiers from CM
+rpm -ivh "http://archive.cloudera.com/director/redhat/7/x86_64/director/2.6.0/RPMS/x86_64/oracle-j2sdk1.8-1.8.0+update121-1.x86_64.rpm"
+yum localinstall -y oracle-j2sdk1.....rpm
+
+vi /etc/default/cloudera-scm-server # add this line at the end
+export JAVA_HOME=/usr/java/latest
+ln -s /usr/java/jdk1.8.0-121-cloudera
+
+# remove previous java
+yum remove -y oracle-j2sdk1.7.x86_64
+
+# create auto run shell
+vi /etc/profile.d/java.sh   # add
+export JAVA_HOME=/user/java/latest
+
+service cloudera-scm-server start
+service cloudera-scm-agent start  # ALL NODES
+
+# UI --> HOSTS --> ALL HOSTS --> CONFIGURATION --> java home dir
+
+### INSTALLINA SPARK 2.2 on CDH
+# download descriptor (jar)  (e.g.   SPARK2_ON_YARN-2.2.0.cloudera1.jar)
+# ADMINISTRATORS --> Settings --> Custom Service Descriptors  (path is   /opt/cloudera/csd)
+cd /opt/cloudera/csd
+chown cloudera-scm:cloudera-scm /opt/cloudera/csd/SPARK2_ON_YARN-2...
+chmod 644 /opt/cloudera/csd/SPARK2_ON_YARN-2.....
+service cloudera-scm-server restart
++ restart CM in UI
+# we add repo of spark 2 i nParcels REMOTE URL
+https://archive.cloudera.com/spark2/parcels/2.2.0.cloudera1
+# available to download.  --> distribute --> activate
+ADD SERVICE --> you will see SPARK 2
+now you can use    spark2-shell  # remember 2 !!

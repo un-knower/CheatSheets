@@ -1,0 +1,490 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"mys",
+				"mysql-connector-java-5"
+			],
+			[
+				"aggre",
+				"aggregated_user_question"
+			],
+			[
+				"PARAMS",
+				"PARAMETERS"
+			],
+			[
+				"SPARK",
+				"SPARK2_ON_YARN-2"
+			],
+			[
+				"cloue",
+				"cloudera-scm-server"
+			],
+			[
+				"cloudera-sc",
+				"cloudera-scm-server"
+			],
+			[
+				"st",
+				"strftime\tfunction"
+			],
+			[
+				"str",
+				"strptime\tfunction"
+			],
+			[
+				"top_",
+				"top_url_pd"
+			],
+			[
+				"parti",
+				"partitionBy"
+			],
+			[
+				"Array",
+				"ArrayType"
+			],
+			[
+				"parse",
+				"parser_agent"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"contents": "# INSTALLATION\ncurl -sSL https://get.docker.com/ | sh\nsudo groupadd docker\nsudo gpasswd -a $USER docker    # adding self to group\nsudo usermod -aG docker $USER   # adding self to group\n\ntmux new -s my_docker # Detach the Tmux session by typing \"Ctrl+b\" and then \"d\".\ndocker run --rm -it -p 8888:8888 -p 50070:50070 -p 8088:8088 bigdatateam/hdfs-notebook # coursera\ntmux a -t my_docker   # attach tmux session       tmux ls\n\n# A container runs natively on Linux and shares the kernel of the host machine with other containers.\n# It runs a discrete process, taking no more memory than any other executable, making it lightweight.\n\nYour new login password is 943675837542# LIST DOWNLOADED MACHINES\n#https://docs.docker.com/engine/reference/run/#kernel-memory-constraints\n#Images can share layers to optimize disk usage, transfer times, and memory use.\n#Image is a read-only filesystem\n#A new image is created by stacking the new layer on top of the old image\n#Container is copy of image\n\n# CHANGE DEFAULT 1CPU/2GB RAM:\ndocker-machine stop\nVBoxManage modifyvm default --cpus 2\nVBoxManage modifyvm default --memory 4096\ndocker-machine start\ndocker run -it --memory-reservation 1G <name> /bin/bash\n\n# OR CREATE NEW MACHINE (VMBOX)\ndocker-machine rm default\ndocker-machine create -d virtualbox --virtualbox-memory=4096 --virtualbox-cpu-count=2 --virtualbox-disk-size=50000 default\n\n# ENABLE DOCKER @ BOOT\nsudo systemctl enable docker\nsudo chkconfig docker on\n\n# ENABLE DOCKER TO LISTEN FOR CONNECTIONS\n# edit   /etc/docker/daemon.json\n{ \"hosts\": [\"fd://\", \"tcp://0.0.0.0:2375\"] }\n{   \"dns\": [\"your_dns_address\", \"8.8.8.8\"] }  # if problems with pip,   set up own DNS\nps aux | grep docker   --> must be -H ...., if not then follow below steps:\nsudo systemctl edit docker.service\nExecStart=/usr/bin/dockerd -H fd:// -H tcp://0.0.0.0:2375\n# reload\nsudo systemctl daemon-reload\nsudo systemctl restart docker.service\n\n\n#############################################################################################\n# RUN CONTAINER\n#############################################################################################\ndocker run busybox echo Hello\ndocker run -it --tty ubuntu bash            # interactive ubuntu session terminal  -i  INPUT possible\ndocker run -d jpetazzo/clock                # run container in background (detach)\ndocker run -d --name=<name> tobert/cassandra\ndocker run -d -p 80:80 --name=<name> nginx   #  -P is for --publish-all on RANDOM ports\ndocker run -it -p 80:80 --name=<name> nginx <overwrite command e.g. bash>\ndocker run -it -p 8888:8888 -m 8g -c 4 \ndocker run -ti --c 512 agileek/cpuset-test    # 1024 = 100% CPU,  512 = 50% CPU\n\ndocker exec <container_ID> cat /etc/*release*         # execute command in container\ndocker attach <container_ID>                          # attach detached -d container back\n\ndocker logs --tail 5 <container_ID>     # will display output/logs from background container\ndocker logs --tail 5 --follow\ndocker run --log-driver=syslog          #  only available for json-file and journald in 1.10).\ndocker history <image>                # you can check size\n\ndocker ps -a        # history    -q   just ID\ndocker image ls = docker images\n# generate an image dependency diagram\ndocker images -viz | dot -Tpng -o docker.png\n# to see it, run on host python -m SimpleHTTPServer, then browse to http://machinename:8000/docker.png\n\n# Loading an image using the load command creates a new image including its history.\ndocker load < my_image.tar.gz                           # Load an image from file:\ndocker save my_image:my_tag | gzip > my_image.tar.gz    # Save an existing image:\n# Importing a container as an image using the import command creates a new image\n# excluding the history which results in a smaller image size compared to loading an image.\ncat my_container.tar.gz | docker import - my_image:my_tag   # Import a container as an image from file:\ndocker export my_container | gzip > my_container.tar.gz     # export existing container\n\ndocker container ls # list RUNNING containers    -a  |  --all    list all\n\n\ndocker kill     # kills immediately\ndocker stop     # send TERM, waits 10 seconds\ndocker container stop <container_ID>\n\ndocker-machine rm my-docker-machine\ndocker rm $(docker ps -a)                               # Remove all containers\ndocker container rm $(docker container ls -a -q)        # Remove all containers\ndocker rmi $(docker images)                             # Remove all images from this machine\ndocker image rm $(docker image ls -a -q)                # Remove all images from this machine\ndocker rm -v                                            # removes also volumes associated with container\n\n# DOWNLOAD IMAGE\ndocker pull debian:jessie\ndocker pull ubuntu  (default: latest)\n# difference between container and base image\ndocker diff <container_ID>  # we must run at least one, latest   docker ps -l\n\ndocker version --format '{{.Server.Version}}'\ndocker version --format '{{json .}}'\n\n\n#############################################################################################\n# CONTAINTER NETWORKING    (bridge,  --network=none,    --network=host)\n#############################################################################################\ndocker run -d --publish-all jpetazzo/web    # -P  publush all exposed ports to random ports\n\ndocker port <container_ID>  # will return all mappings\ndocker port <container_ID> <container_port> # will return host port for given container port\n\ndocker inspect --format '{{ .NetworkSettings.IPAddress }}' <container_ID>  # -f\ndocker inspect `dl` | jq -r '.[0].NetworkSettings.IPAddress'    # to get ip\ndocker-machine inspect --format '{{ .Driver.IPAddress }}' myvm1\ndocker-machine ip myvm1\ndocker run ubuntu ip -4 -o addr show eth0   # IP\n\ndocker network create --driver bridge --subnet 182.18.0.0/16 <some-net-name>   # creating new network within container\n\n# create a new bridge network with your subnet and gateway for your ip block\ndocker network create --subnet 203.0.113.0/24 --gateway 203.0.113.254 iptastic\n\n# run a nginx container with a specific ip in that block\n$ docker run --rm -it --net iptastic --ip 203.0.113.2 nginx\n\ndocker-machine ip  # on Windows Docker Toolbox, that gives virtualbox IP, which is to be used instead of 0.0.0.0 or 127.0.0.1\n\n\n\n#############################################################################################\n# VOLUMES (PERSISTING DATA IN DOCKER)\n#############################################################################################\n# Can be declared in 2 ways:\nVOLUME /var/lib/postresql       # Dockerfile\ndocker run -d  --name=alpha -v /var/myvolume  training/postgresql bash\ndocker run -it --name=beta --volumes-from alpha training/postgresql bash\ndocker run -it -v [host-path]:[container-path]:[rw|ro]  #   -v \"$(pwd)\" :/opt/names\n\ndocker run -it -v /var/run/docker.sock:/docker.sock ubuntu bash # bad ideas a container gets root\nnc -U //var/run/docker.sock   ## GET /imapges/json http/1.1 http/1.1 200 OK\n\ndocker run --name myjenkins -p 8080:8080 -p 50000:50000 --env JAVA_OPTS=\"-Djava.util.logging.config.file=/var/jenkins_home/log.properties\" -v `pwd`/data:/var/jenkins_home jenkins/jenkins:lts\ndocker run --name myjenkins -p 8080:8080 -p 50000:50000 -v //c/Users/x/jenkins://var/jenkins_home jenkins  # WINDOWS !!!\n\n# exports volume at /data and sends into ./foo.tar\ndocker-volumes export insane_feynman:/data > foo.tar\n# export and also pause each container using that volume, unpauses when export is finished\ndocker-volumes export --pause insane_feynman:/data > foo.tar\n# pipe in foo.tar and import to the insane_feynman container at the same /data path\ncat foo.tar | docker-volumes import insane_feynman\n# pipe in foo.tar and import to the romantic_thompson container at the /moreData path\ncat foo.tar | docker-volumes import romantic_thompson /moreData\n# export from focussed_brattain and pipe directly into the import for insane_feynman\ndocker-volumes export focused_brattain:/data | docker-volumes import insane_feynman\n# export focussed_brattain and pipe into jolly_torvalds at a remote docker instance\ndocker-volumes export focused_brattain:/data | docker-volumes -H tcp://1.2.3.4:2375 jolly_torvalds\n\n#############################################################################################\n# LINKING CONTAINERS (providing DNS entry...)\n#############################################################################################\ndocker run -d --name=redisserver redis\ndocker run -it --name=redisclient1 --link redisserver:redissrvalias redis env\n\ncat /etc/hosts  # we can see server ip, and we can ping it\n# we can now start redic command line on client and connect to redis srv\nredis-cli -h redissrv # name from link...\n\n\n\n#############################################################################################\n# UPLOAD TO HUB, SHARE\n#############################################################################################\ndocker login\ndocker tag image username/repository:tag\ndocker tag mywebsite <my_login>/mywebsite\nodcker push <my_login>/mywebsite\ndockier logout # drops credentials\n# login to own registry\ndocker login registry.example.com\n\n\n\n# CREATE NEW IMAGE MANUAL (from last container)\ndocker commit -m \"message\" <existing container_ID> <tag>  # change tag by:     docker tag <image ID> <tag>\ndocker commit -run='{\"Cmd\":[\"postgres\", \"-too -many -opts\"]}' `dl` postgres\nalias dl='docker ps -l -q'  # returns ID, to use in   commit    docker commit `dl` helloworld\n\n\n#############################################################################################\n# Dockerfile COMMANDS  ,   CREATE NEW IMAGE AUTOMATIC    https://docs.docker.com/engine/reference/builder/#from\n#############################################################################################\nmkdir myimage && cd myimage\nvim Dockerfile\nFROM ubuntu\nFROM ubuntu:12.04\nFROM python:2.7-slim\nFROM training/sinatra\nFROM localhost:5000/funtoo\n\nLABEL Docker Education Team <education@docker.com>   # MAINTAINER  depreciated\n\nRUN yum install -y wget\nRUN apt-get update && apt-get install -y python python-pip # with shell wrapping   /bin/sh -c\nRUN [\"apt-get\", \"update\"]   # using exec method, for images without /bin/sh\nRUN will not start daemons, use CMD and/or ENTRYPOINT\n\nEXPOSE 8080 # all ports are private by default\n# Note that EXPOSE does not expose the port itself -- only -p will do that. To expose the container's port on your localhost's port:\niptables -t nat -A DOCKER -p tcp --dport <LOCALHOSTPORT> -j DNAT --to-destination <CONTAINERIP>:<PORT>\ndocker run -P # all ports declared with EXPOSE become public\n\nCOPY wwwfolder /var/www/site     # copy from HOST to CONTAINER\nCOPY /src/webapp /opt/webapp  # <source> <image>  , /src is relative to dir containing Dockerfile\nCOPY . /app                  # copy current dir into container's /app\nCOPY http://www.example.com/webapp /opt/$USER/spark  # will download file ,  zip/tar will be unzipped! , URL not\nfiles are owned by root with 0755   # COPY ....same as ADD (deprec)\n\nVOLUME [ \"/opt/webapp/data\" ]   # will create data volume mount point,  not captured by commit\n\nWORKDIR /app                    # sets working dir for subsequent commands\n\nENV WEBAPP_PORT 8080    # specified env variables that should be set in launched containers\nENV SPARK_JARS ${SPARK_JARS},local:///home/$NB_USER/spark-packages/graphframes-0.1.0-spark1.6.jar,local:///home/$NB_USER/spark-packages/nak_2.10-1.3.jar\nENV SPARK_OPTS ${SPARK_OPTS_BASE} --jars ${SPARK_JARS}\ndocker run -e WEBAPP_PORT=8080 -e WEBAPP_HOST=www.example.com   # -e environ w command line\n\nUSER    # sets user name or UID\n\nVOLUME [\"/var/log/\"], or a plain string with multiple arguments, such as VOLUME /var/log or VOLUME /var/log /var/db\n\n# ENTRYPOINT should be defined when using the container as an executable.\n# NOT OVERRIDABLE\nENTRYPOINT [ \"/bin/ls\"]                 # arguments given are appended to entry point\nENTRYPOINT [\"wget\", \"-0-\", \"-q\"]        # param from cmd will be appended\nENTRYPOINT FLASK_APP=/opt/source-code/app.py flask run --host=0.0.0.0\n# CMD should be used as a way of defining default arguments for an ENTRYPOINT command or for executing an ad-hoc command in a container.\n# OVERRIDABLE\nCMD default parameter for ENTRYPOINT # if used together, e.g. http://ifconfig.me/ip\n\nCMD nginx -g \"daemon off;\"              # executed in a shell\nCMD [ \"nginx\", \"-g\", \"daemon off;\" ]    # executed directly without shell processing\nCMD wget -0- -q http://ifconfig.me/ip   # -0-  to console, only last CMD is executed\nCMD [\"start-all.sh\", \"jupyter\", \"notebook\", \"--no-browser\", \"--port 8888\", \"--ip=*\", \"--NotebookApp.token=''\", \"--NotebookApp.disable_check_xsrf=True\"]\n\nif we type any command in command line, then we overwrite this CMD !!!\ndocker run -it --entrypoint bash <image ID> # this will overwrite ENTRYPOINT in Dockerfile\n\nONBUILD # it's a trigger, sets instructions that will be executed when another image\n# is build from the image being built, useful for binding images used as a base\nONBUILD ADD . /app/src\n\ndocker build -t <tag> .\ndocker build -t <dockerhubUsername>/web git://github.com/docker-training/staticweb.git\n\n# https://www.docker.com/use-cases/cicd\ndocker build --pull=true -t dtr.mikegcoleman.com/hello-jenkins:$GIT_COMMIT .        # build docker image\ndocker run -i --rm dtr.mikegcoleman.com/hello-jenkins:$GIT_COMMIT /script/test      # test docker image\ndocker push  dtr.mikegcoleman.com/hello-jenkins:$GIT_COMMIT  # if tests successful, push image to docker trusted registry\n\n\n\n\n# 1. RUBY\nFROM ruby\nRUN apt-get update -qq && apt-get install -y build-essential libpq-dev\nRUN mkdir /myapp\nWORKDIR /myapp\nADD Gemfile /myapp/Gemfile\nRUN bundle install -j8\nEXPOSE 3000\nADD . /myapp\nADD ./webapp/requirements.txt /tmp/requirements.txt # first copy\nRUN pip install -qr /tmp/requirements.txt           # then install updated\nCMD [\"bundle\", \"exec\", \"rails\", \"s\"]\n\n# AMBASSADORS - portability\n\n# AUTOMATED - Every time you make a commit to git repo a new version of the image will be built\n# EXAMPLE\n# Dockerfile    https://github.com/docker-training/webapp\nFROM ubuntu:14.04\nMAINTAINER Docker Education Team <education@docker.com>\nRUN apt-get update\nRUN DEBIAN_FRONTEND=noninteractive apt-get install -y -q python-all python-pip\nADD ./webapp/requirements.txt /tmp/requirements.txt\nRUN pip install -qr /tmp/requirements.txt\nADD ./webapp /opt/webapp/\nWORKDIR /opt/webapp\nEXPOSE 5000\nCMD [\"python\", \"app.py\"]\n\n# RUN JENKINS (Dockerfile used to build this image https://github.com/docker-training/jenkins/blob/master/Dockerfile)\n$ docker run -d --name=jenkins -p 8080:8080 \\\n-v /var/run/docker.sock:/var/run/docker.sock \\\n-e DOCKERHUB_ID=<Your Docker Hub ID> \\\n-e DOCKERHUB_EMAIL=<Your Docker Hub Email> \\\n-e GITHUB_ID=<Your GitHub ID> \\\nnathanleclaire/jenkin\n\n### CASSANDRA\ndocker exec -it <name> nodetool status  # those are cassandra's tools\ndocker exec -it <name> nodetool ring  # we can see list of vnodes and last token range associated with it\ndocker exec -it n1 /bin/bash\nvi /data/conf/cassandra.yaml      #num_tokens = 256 \n# running second node\ndocker run --name=n2 -d tobert/cassandra -seeds <ip of running already>\n\n\n\n#############################################################################################\n# FIG\n#############################################################################################\n# with fig we define set of containers to boot up and their runtime properties in YAML\n# INSTALL 1\ncurl -L https://github.com/docker/fig/releases/download/0.5.2/linux \\\n> /usr/local/bin/fig\nchmod +x /usr/local/bin/fig\n# INSTALL ALTERNATIVE\nsudo pip install -U fig\n# CLONE SOURCE CODE\ncd\ngit clone https://github.com/docker-training/simplefig\ncd simplefig\n# CREATE DOCKERFILE\nFROM python:2.7\nADD requirements.txt /code/requirements.txt\nWORKDIR /code\nRUN pip install --trusted-host pypi.python.org -r requirements.txt\nADD . /code\n# CREATE fig.yml\nweb:\n  build: .\n  command: python app.py\n  ports:\n   - \"5000:5000\"\n  volumes:\n   - .:/code\n  links:\n   - redis\nredis:\n  image: orchardup/redis\n# FIG\nfig build        # rebuild\nfig up -d       # run in background\nfig ps          # see currently runnig services\nfig rm          # remove existing services\n\n\n\n#############################################################################################\n# DOCKER API\n#############################################################################################\n# The API binds locally to unix:///var/run/docker.sock but can also be bound to a network interface.\n# • Not authenticated by default.\n# • Securable with certificates.\n\n# CREATING CONTAINER, api will return containerID\n$ curl -X POST -H 'Content-Type: application/json' \\\nhttp://localhost:2375/containers/create \\\n-d '{\n\"Cmd\":[\"echo\", \"hello world\"],\n\"Image\":\"busybox\"\n}'\n{\"Id\":\"<yourContainerID>\",\"Warnings\":null}\n\n# START new container\n$ curl -X POST -H 'Content-Type: application/json' \\\nhttp://localhost:2375/containers/<yourContainerID>/start \\\n-d '{}'\n\n# INSPECT CONTAINER\n$ curl --silent -X GET http://localhost:2375/containers/<yourContainerID>/json | python -mjson.tool\n\n# WAIT IF TAKES LONGER\n# But for containers running for a longer period of time, we can call the wait endpoint.\n# The wait endpoint also gives the exit status of the container.\n$ curl --silent -X POST http://localhost:2375/containers/<yourContainerID>/wait\n{\"StatusCode\":0}\n\n# VIEW CONTAINER OUTPUT LOGS, we can simulare tail -f ...\n$ curl --silent http://localhost:2375/containers/<yourContainerID>/logs?stdout=1\n\n# STOPPING (success: code 204)\n$ curl --silent -X POST http://localhost:2375/containers/<yourContainerID>/stop\n\n# RETURNS A HASH OF ALL IMAGES\n$ curl -X GET http://localhost:2375/images/json?all=0\n# SEARCHING \n$ curl -X GET http://localhost:2375/images/search?term=training\n# ADD IMAGE TO DOCKER HOST\n$ curl -i -v -X POST \\\nhttp://localhost:2375/images/create?fromImage=training/namer\n{\"status\":\"Pulling repository training/namer\"}\n\n\n\n\n\n#############################################################################################\n# SECURING DOCKER\n#############################################################################################\n# 1. initialize the CA serial file and generate CA private and public keys:\n$ echo 01 > ca.srl\n$ openssl genrsa -des3 -out ca-key.pem 2048\n$ openssl req -new -x509 -days 365 -key ca-key.pem -out ca.pem\n# We will use the ca.pem file to sign all of the other keys later.\n\n# 2. Create and Sign the Server Key\n# Now that we have a CA, we can create a server key and certificate signing request. Make\n# sure that CN matches the hostname you run the Docker daemon on:\n$ openssl genrsa -des3 -out server-key.pem 2048\n$ openssl req -subj '/CN=**<Your Hostname Here>**' -new -key server-key.pem -out server.csr\n$ openssl rsa -in server-key.pem -out server-key.pem\n\n# 3. Next we're going to sign the key with our CA:\n$ openssl x509 -req -days 365 -in server.csr -CA ca.pem -CAkey ca-key.pem -out server-cert.pem\n\n# 4. Create and Sign the Client Key\n$ openssl genrsa -des3 -out client-key.pem 2048\n$ openssl req -subj '/CN=client' -new -key client-key.pem -out client.csr\n$ openssl rsa -in client-key.pem -out client-key.pem\n# To make the key suitable for client authentication, create a extensions config file:\n$ echo extendedKeyUsage = clientAuth > extfile.cnf\n# Now sign the key:\n$ openssl x509 -req -days 365 -in client.csr -CA ca.pem -CAkey ca-key.pem \\\n-out client-cert.pem -extfile extfile.cnf\n\n# 5. Configuring the Docker Daemon for TLS\n# • By default, Docker does not listen on the network at all.\n# • To enable remote connections, use the -H flag.\n# • The assigned port for Docker over TLS is 2376.\n$ sudo docker -d --tlsverify\n--tlscacert=ca.pem --tlscert=server-cert.pem\n--tlskey=server-key.pem -H=0.0.0.0:2376\n# Note: You will need to modify the startup scripts on your server for this to be\n# permanent! The keys should be placed in a secure system directory, such as /etc/docker\n\n\n# 6. Configuring the Docker Client for TLS\n# If you want to secure your Docker client connections by default, you can move the key\n# files to the .docker directory in your home directory. Set the DOCKER_HOST variable as well.\n$ cp ca.pem ~/.docker/ca.pem\n$ cp client-cert.pem ~/.docker/cert.pem\n$ cp client-key.pem ~/.docker/key.pem\n$ export DOCKER_HOST=tcp://:2376\n# Then you can run docker with the --tlsverify option.\n$ docker --tlsverify ps\n\n\n\n#############################################################################################\n# SERVICES\n#############################################################################################\n# docker-compose.yml\nversion: \"3\"\nservices:\n  web:\n    # replace username/repo:tag with your name and image details\n    image: username/repo:tag\n    deploy:\n      replicas: 5\n      resources:\n        limits:\n          cpus: \"0.1\"       # each of 5 services to use at most 10% CPU across all cores\n          memory: 50M\n      restart_policy:\n        condition: on-failure\n    ports:\n      - \"80:80\"\n    networks:\n      - webnet\n##### addition\n  visualizer:\n    image: dockersamples/visualizer:stable\n    ports:\n      - \"8080:8080\"\n    volumes:\n      - \"/var/run/docker.sock:/var/run/docker.sock\"\n    deploy:\n      placement:\n        constraints: [node.role == manager]               # ensuring that this service only ever runs on a swarm manager -- never a worker.\n    networks:\n      - webnet\n########### \n  redis:\n    image: redis\n    ports:\n      - \"6379:6379\"\n    volumes:\n      - \"/home/docker/data:/data\"           # remember to create ./data on manager !!   docker-machine ssh myvm1 \"mkdir ./data\"\n    deploy:\n      placement:\n        constraints: [node.role == manager]\n    command: redis-server --appendonly yes\n    networks:\n      - webnet\n##### addition END\nnetworks:\n  webnet:       # load balancing!\n\n# enable swarm mode and make your machine swarm manager\ndocker swarm init\n# start single service stack (or RESTART...no need to kill etc, just run same command)\ndocker stack deploy -c docker-compose.yml getstartedlab\ndocker stack deploy --with-registry-auth -c docker-compose.yml getstartedlab    # if private registry used\n# get running service info\ndocker stack ls\ndocker service ls   # list running services associated with app\n# service is called   <name>_<service> , e.g.: getstartedlab_web\n# single container running service is called TASK, listing tasks of service:\ndocker service ps getstartedlab_web\n# tasks also show up in all containers list\ndocker container ls -q -a\n# take down app\ndocker stack rm getstartedlab\n# take down swarm\ndocker swarm leave --force        # leave on worker    --force  on manager\n\n\n\n#############################################################################################\n# SWARM (is a group of machines that are running Docker and joined into a cluster)\n#############################################################################################\n# CREATE COUPLE OF VM\ndocker-machine create --driver virtualbox myvm1         # manager\ndocker-machine create --driver virtualbox myvm2         # worker\n# send commands to machine\ndocker-machine ssh myvm1 \"docker swarm init --advertise-addr <myvm1 ip>\" # if issues use native ssh:    docker-machine --native-ssh ssh myvm1 ...\n# to add worker to this swarm run command:              # to add manager run :      'docker swarm join-token manager'\ndocker swarm join --token <token> <myvm1 ip>:2377\n# so we run it on our second VM, to join it to the swarm\ndocker-machine ssh myvm2 \"docker swarm join --token <token> <ip>:2377\"\n# view nodes in the swatm \ndocker-machine ssh myvm1 \"docker node ls\"     docker node inspect <node>           docker swarm join-token -q worker\n# leave swarm\ndocker swarm leave\n\n# we can also configure local shell to talk to VM, this is \"better\" as allows copy/use local file to deploy\n# check where are we connected\ndocker-machine ls   (or docker-machine active)\n# this command will make a selected VM the active/default one!\neval $(docker-machine env myvm1)\n# next just run command and it's deployed on swarm cluster, it must be executed on manager!\ndocker stack deploy -c docker-compose.yml getstartedlab\n# check how tasks have been distributed between myvm1 and myvm2\ndocker stack ps getstartedlab\n\n# to copy files across machines we can use\ndocker-machine scp <file> <machine>:~           # Copy file to node's home dir (only required if you use ssh to connect to manager and deploy the app)\ndocker-machine scp docker-compose.yml myvm1:~   # Copy file to node's home dir (only required if you use ssh to connect to manager and deploy the app)\n\n# unsetting docker-machine shell variable setting\neval $(docker-machine env -u)      # none VM is active/default, we can use native docker commands again\n\ndocker-machine stop $(docker-machine ls -q)               # Stop all running VMs\ndocker-machine rm $(docker-machine ls -q) # Delete all VMs and their disk images\n\n\n\n\nhttps://youtu.be/DQwyIpDcLAk?t=2051\n\n\nhttps://github.com/wsargent/docker-cheat-sheet\n\ndocker pull bigdatateam/spark-course2\nhttps://hub.docker.com/r/bigdatateam/yarn-notebook/\n\nhttps://www.coursera.org/learn/big-data-analysis/home/week/6",
+			"file": "docker_cheatsheet.sh",
+			"file_size": 25123,
+			"file_write_time": 131727789339471239,
+			"settings":
+			{
+				"buffer_size": 25106,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "git_cheatsheet.sh",
+			"settings":
+			{
+				"buffer_size": 2521,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "python/PySpark.py",
+			"settings":
+			{
+				"buffer_size": 7556,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "spark_scala/various.scala",
+			"settings":
+			{
+				"buffer_size": 52947,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		}
+	],
+	"build_system": "Packages/Python/Python.sublime-build",
+	"build_system_choices":
+	[
+		[
+			[
+				[
+					"Packages/Python/Python.sublime-build",
+					""
+				],
+				[
+					"Packages/Python/Python.sublime-build",
+					"Syntax Check"
+				]
+			],
+			[
+				"Packages/Python/Python.sublime-build",
+				""
+			]
+		]
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"",
+				"Anaconda: Disable linting on this file"
+			],
+			[
+				"Package Control:",
+				"Package Control: Remove Package"
+			],
+			[
+				"install package ",
+				"Package Control: Install Package"
+			],
+			[
+				"install\t",
+				"Install Package Control"
+			]
+		],
+		"width": 0.0
+	},
+	"console":
+	{
+		"height": 157.0,
+		"history":
+		[
+			"import random",
+			"print (\"D\")",
+			"print d"
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"file_history":
+	[
+		"/C/Users/x/Git/CheatSheets/azure",
+		"/C/Users/x/Git/CheatSheets/cm_install.sh",
+		"/C/Users/x/Git/CheatSheets/parsing_ssh.sh",
+		"/C/Users/x/Git/CheatSheets/bashCheatSheet.sh",
+		"/C/Users/x/Git/CheatSheets/KerberosInstall.sh",
+		"/C/Users/x/Git/CheatSheets/python/datetime_functions.py",
+		"/C/Users/x/AppData/Roaming/Sublime Text 3/Packages/Anaconda/Anaconda.sublime-settings",
+		"/C/Users/x/AppData/Roaming/Sublime Text 3/Packages/User/Anaconda.sublime-settings"
+	],
+	"find":
+	{
+		"height": 40.0
+	},
+	"find_in_files":
+	{
+		"height": 0.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"images",
+			"IPAd",
+			"inspect",
+			"ip",
+			"ENTRYPOIN",
+			"inspec",
+			"//",
+			"///",
+			"-log",
+			"0.0",
+			"-e",
+			"-v",
+			"exec",
+			"docker-compo",
+			"arraytype(",
+			"]\n",
+			"datase",
+			"na.drop(\"an",
+			"dropTempView",
+			".catalog",
+			"join",
+			".agg(",
+			"groupb",
+			"mysql-",
+			"jdbc",
+			"hive",
+			"spark.sql",
+			"path",
+			"at",
+			"path",
+			".save",
+			"_corrupt_record",
+			"_*",
+			"colu",
+			"struct",
+			"explode",
+			"column",
+			"struct",
+			".add",
+			"struct",
+			"csv.",
+			"DATAFR",
+			"sparkses",
+			"broadcas",
+			"hitcoun",
+			"cache",
+			"partition",
+			"memory",
+			"ssh",
+			"for",
+			"source.",
+			"source",
+			"accumu",
+			"accumul",
+			"()",
+			"accu",
+			"schem",
+			"rese",
+			"()",
+			"interpre",
+			"time",
+			"UDF"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+			"path"
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 0,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "docker_cheatsheet.sh",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 25106,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								8297,
+								8298
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/ShellScript/Bash.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 2433.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "git_cheatsheet.sh",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 2521,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1904,
+								1904
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/ShellScript/Bash.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 180.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "python/PySpark.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 7556,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								2129,
+								2129
+							]
+						],
+						"settings":
+						{
+							"auto_complete_triggers":
+							[
+								{
+									"characters": ".",
+									"selector": "source.python - string - comment - constant.numeric"
+								},
+								{
+									"characters": ".",
+									"selector": "source.python - string - constant.numeric"
+								}
+							],
+							"complete_parameters": false,
+							"syntax": "Packages/Python/Python.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 487.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 3,
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "spark_scala/various.scala",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 52947,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								23706,
+								23706
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Scala/Scala.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 8453.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 39.0
+	},
+	"input":
+	{
+		"height": 0.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.exec":
+	{
+		"height": 257.0
+	},
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "Packages/Python/Python.sublime-build",
+	"project": "",
+	"replace":
+	{
+		"height": 50.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 150.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}

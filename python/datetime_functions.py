@@ -56,3 +56,13 @@ logme("7   {}".format(epoch_to_ts(epochMS_now())))
 logme("8   {}".format(epoch_to_ts(epochMS_now(), show_ms=True)))
 logme("9   {}".format(ts_to_epoch(ts_now())))
 logme("10  {}".format(ts_to_epoch(ts_now(), show_ms=True)))
+
+def get_next_day(s):
+    """
+    input:  '2017-01-30'
+    output: '2017-01-31'
+    """
+    from datetime import datetime, timedelta
+    fmt = "%Y-%m-%d"
+    return (datetime.strptime(s, fmt) + timedelta(days=1)).strftime(fmt)
+    
