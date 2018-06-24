@@ -1,3 +1,201 @@
+import org.apache.spark.sql.functions.{explode, split}
+import org.apache.spark.sql.functions._
+
+
+// Setup connection to Kafka
+// key, value, topic, partition, offset, timestamp
+val streamingInputDF = spark.readStream
+  .format("kafka")
+  .option("kafka.bootstrap.servers", "YOUR.HOST:PORT1,YOUR.HOST:PORT2")   // comma separated list of broker:host
+  .option("subscribe", "YOUR_TOPIC1,YOUR_TOPIC2")    // comma separated list of topics
+  .option("subscribePattern", "topic*")       // dynamic list
+  .option("assign", {"topicA" : [0,1] } )     //specific partitions
+  .option("startingOffsets", "latest") // read data from the end of the stream
+  .load()
+  // .groupBy('value.cast("string") as 'key)
+  // .agg(count("*") as 'value)
+  .selectExpr("cast (value as string) as json")
+  .select(from_json("json", schema).as("data")) // https://spark.apache.org/docs/latest/api/scala/index.html#org.apache.spark.sql.functions$@from_json(e:org.apache.spark.sql.Column,schema:String,options:Map[String,String]):org.apache.spark.sql.Column
+  // json   -->  data (nested)
+  // { "timestamp": 14545454545, "device": "devA", ...}       timestamp    device
+  // { "timestamp": 14545454546, "device": "devB", ...}       14545454545  devA
+  .select("data.*")   // not nested any more
+  .writeStream    //SINK
+  .format("parquet")
+  .option("path", "/parquetTable/")
+  .trigger("1 minute")  // checkpoint
+  .partitionBy("date")
+  .option("checkpointLocation", "...")
+  .outputMode("update")
+  .start()
+  
+  
+// split lines by whitespace and explode the array as rows of `word`
+val df = streamingInputDF
+  .select(explode(split($"value".cast("string"), "\\s+")).as("word"))
+  .groupBy($"word")
+  .count
+
+var streamingSelectDF = 
+  streamingInputDF
+   .select(get_json_object(($"value").cast("string"), "$.zip").alias("zip"))
+    .groupBy($"zip") 
+    .count()
+    
+// Window
+var streamingSelectDF = 
+  streamingInputDF
+   .select(get_json_object(($"value").cast("string"), "$.zip"    ).alias("zip"),
+           get_json_object(($"value").cast("string"), "$.hittime").alias("hittime"))
+   .groupBy($"zip", window($"hittime".cast("timestamp"), "10 minute", "5 minute", "2 minute"))
+   .count()
+
+// File output with partition
+var streamingSelectDF = 
+  streamingInputDF
+   .select(get_json_object(($"value").cast("string"), "$.zip").alias("zip"),    get_json_object(($"value").cast("string"), "$.hittime").alias("hittime"), date_format(get_json_object(($"value").cast("string"), "$.hittime"), "dd.MM.yyyy").alias("day"))
+    .groupBy($"zip") 
+    .count()
+    .as[(String, String)]
+
+val query =
+  streamingSelectDF
+    .writeStream
+    .format("parquet")
+    .option("path", "/mnt/sample/test-data")
+    .option("checkpointLocation", "/mnt/sample/check")
+    .partitionBy("zip", "day")
+    .trigger(ProcessingTime("25 seconds"))   // .trigger(processingTime="10 seconds")
+    .start()
+
+
+
+ALTER TABLE test_par ADD IF NOT EXISTS 
+PARTITION (zip='38907', day='08.02.2017')
+LOCATION '/mnt/sample/test-data/zip=38907/day=08.02.2017'
+    
+   
+// Memory output
+import org.apache.spark.sql.streaming.ProcessingTime
+
+val query =
+  streamingSelectDF
+    .writeStream
+    .format("memory")           // can be "console" for console output , but then without queryName
+    .queryName("isphits")     
+    .outputMode("complete") 
+    .trigger(ProcessingTime("25 seconds"))
+    .start()
+    
+
+// JDBC SINK
+import java.sql._
+
+class  JDBCSink(url:String, user:String, pwd:String) extends ForeachWriter[(String, String)] {
+      val driver = "com.mysql.jdbc.Driver"
+      var connection:Connection = _
+      var statement:Statement = _
+      
+    def open(partitionId: Long,version: Long): Boolean = {
+        Class.forName(driver)
+        connection = DriverManager.getConnection(url, user, pwd)
+        statement = connection.createStatement
+        true
+      }
+
+      def process(value: (String, String)): Unit = {
+        statement.executeUpdate("INSERT INTO zip_test " + 
+                "VALUES (" + value._1 + "," + value._2 + ")")
+      }
+
+      def close(errorOrNull: Throwable): Unit = {
+        connection.close
+      }
+   }
+// noe we can use
+val url="jdbc:mysql://<mysqlserver>:3306/test"
+val user ="user"
+val pwd = "pwd"
+
+val writer = new JDBCSink(url,user, pwd)
+val query =
+  streamingSelectDF
+    .writeStream
+    .foreach(writer)
+    .outputMode("update")  // update, complete, append,    https://databricks.com/blog/2016/07/28/structured-streaming-in-apache-spark.html
+    .trigger(ProcessingTime("25 seconds"))
+    .start()
+    
+    
+    
+// KAFKA SINK
+import java.util.Properties
+import kafkashaded.org.apache.kafka.clients.producer._
+import org.apache.spark.sql.ForeachWriter
+
+class  KafkaSink(topic:String, servers:String) extends ForeachWriter[(String, String)] {
+      val kafkaProperties = new Properties()
+      kafkaProperties.put("bootstrap.servers", servers)
+      kafkaProperties.put("key.serializer", "kafkashaded.org.apache.kafka.common.serialization.StringSerializer")
+      kafkaProperties.put("value.serializer", "kafkashaded.org.apache.kafka.common.serialization.StringSerializer")
+      val results = new scala.collection.mutable.HashMap[String, String]
+      var producer: KafkaProducer[String, String] = _
+
+      def open(partitionId: Long,version: Long): Boolean = {
+        producer = new KafkaProducer(kafkaProperties)
+        true
+      }
+
+      def process(value: (String, String)): Unit = {
+          producer.send(new ProducerRecord(topic, value._1 + ":" + value._2))
+      }
+
+      def close(errorOrNull: Throwable): Unit = {
+        producer.close()
+      }
+   }
+
+val topic = "<topic2>"
+val brokers = "<server:ip>"
+
+val writer = new KafkaSink(topic, brokers)
+
+val query =
+  streamingSelectDF
+    .writeStream
+    .foreach(writer)
+    .outputMode("update")
+    .trigger(ProcessingTime("25 seconds"))
+    .start()
+
+
+    
+    
+// SPARK SCHEDULER POOLS   https://spark.apache.org/docs/latest/job-scheduling.html#fair-scheduler-pools
+// Run streaming query1 in scheduler pool1
+spark.sparkContext.setLocalProperty("spark.scheduler.pool", "pool1")
+df.writeStream.queryName("query1").format("parquet").start(path1)
+
+// Run streaming query2 in scheduler pool2
+spark.sparkContext.setLocalProperty("spark.scheduler.pool", "pool2")
+df.writeStream.queryName("query2").format("orc").start(path2)
+
+
+// read NOT a stream from Kafka
+val df = spark.read.format("kafka").option("subscribe", "topic").load()
+df.registerTempTable("topicData")
+spark.sql("select value from topicData")
+
+
+
+
+
+
+
+
+// http://cdn2.hubspot.net/hubfs/438089/notebooks/spark2.0/Structured%20Streaming%20using%20Scala%20DataFrames%20API.html
+// python http://cdn2.hubspot.net/hubfs/438089/notebooks/spark2.0/Structured%20Streaming%20using%20Python%20DataFrames%20API.html
+
 // ------------------------ STREAMING (old)
 // https://github.com/apache/spark/tree/v2.3.0/examples/src/main/scala/org/apache/spark/examples/streaming
 import org.apache.spark._
@@ -16,7 +214,7 @@ ssc.start()             // Start the computation
 ssc.awaitTermination()  // Wait for the computation to terminate
 
 
-// CHECKPOINTING
+// CHECKPOINTING  METADATA
 
 def functionToCreateContext(): StreamingContext = {
   val ssc = new StreamingContext(...)   // new context
@@ -64,13 +262,15 @@ val wordCounts = words.groupBy("value").count()
 
 
 
-
 // Read all the csv files written atomically in a directory
 val userSchema = new StructType().add("name", "string").add("age", "integer")
 val csvDF = spark
   .readStream
   .option("sep", ";")
   .schema(userSchema)      // Specify schema of the csv files
+  .option("latestFirst", "true")
+  .option("maxFilesPerTrigger", 1)  // Treat a sequence of files as a stream by picking one file at a time !!!
+  .option("maxFilesPerTrigger", "20")  // limit how many files to process every time
   .csv("/path/to/directory")    // Equivalent to format("csv").load("/path/to/directory")
 
 
@@ -90,9 +290,26 @@ val clicks = spark
 
 
 
-val inputDF = spark.readStream.json("s3://logs")
-inputDF.groupBy($"action", window($"time", "1 hour")).count()
-	.writeStream.format("jdbc").start("jdbc:mysql//...")
+//we will start a StreamingQuery that runs continuously to transform new data as it arrives.
+val streamingETLQuery = df //streamed DF
+  .withColumn("date", $"timestamp".cast("date") // derive the date from timestamp column
+  .writeStream
+  .trigger(ProcessingTime("10 seconds")) // check for new files every 10s
+  .format("parquet") // write as Parquet partitioned by date
+  .partitionBy("date")
+  .option("path", "/cloudtrail")
+  .option("checkpointLocation", "/cloudtrail.checkpoint/")
+  .start()
+
+
+// Save our previous xxx query to an in-memory table
+countsDF.writeStream.format("memory")
+  .queryName("xxx")
+  .outputMode("complete")     // complete for aggregation queries, append for non-aggregate
+  .start()
+// Then any thread can query the table using SQL
+sql("select sum(count) from xxx where action=’login’")
+
 
 
 
@@ -122,13 +339,14 @@ val lines = spark.readStream
       .option("includeTimestamp", true)
       .load()
 
+
 // Split the lines into words, retaining timestamps
 val words = lines.as[(String, Timestamp)].flatMap(line => line._1.split(" ").map(word => (word, line._2))).toDF("word", "timestamp")
 // Group the data by window and word and compute the count of each group
 val windowedCounts = words
   .withWatermark("timestamp", "10 minutes")		// defining “10 minutes” as the threshold of how late is the data allowed to be
   .groupBy(window($"timestamp", windowDuration, slideDuration), $"word")
-  .count()
+  .avg("col1")
   .orderBy("window")
 // Start running the query that prints the windowed word counts to the console
 val query = windowedCounts.writeStream
@@ -137,10 +355,13 @@ val query = windowedCounts.writeStream
   .option("truncate", "false")
   .start()
 
-query.awaitTermination()
+
   
 
 
+val inputDF = spark.readStream.json("s3://logs")
+inputDF.groupBy($"action", window($"time", "1 hour")).count()   // tumbling, i.e. non-overlapping
+  .writeStream.format("jdbc").start("jdbc:mysql//...")
 
 
 // KAFKA
@@ -188,13 +409,58 @@ df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)")
 
 
 
+//http://spark.apache.org/docs/latest/api/scala/index.html#org.apache.spark.sql.streaming.GroupState
+//https://github.com/apache/spark/blob/v2.3.1/examples/src/main/scala/org/apache/spark/examples/sql/streaming/StructuredSessionization.scala
+mapGroupsWithState - how to use
+1. define data structures
+case class UserAction( userId: String, action: String)    // input
+case class UserStatus( userId: String, active: Boolean)   // state data + output event
+
+2. define function to update state each of grouping key using new data
+def updateState {
+  userId: String,                                   // grouping key
+  actions: Iterator[UserAction],                    // new data
+  state: GroupState[UserStatus]): UserStatus = {    // previous state , previous status of this user
+    val prevStatus = state.getOption.getOrElse {
+      new UserStatus()                              // get previous status
+    }
+    actions.foreach { action => prevStatus.updateWith(action) }   // update user status with actions
+    state.update(prevStatus)                        // update state with latest user status
+    return prevStatus                             
+  }
+}
+
+3. use the user-defined function on a grouped Dataset
+userActions.groupByKey(_.userId).mapGroupsWithState(updateState)
 
 
 
 
+// TIMEOUTS, e.g. mark user as inactive when there is no actions for 1 hour
+// https://youtu.be/hyZU_bw1-ow?t=1842
+// when a group does not get any event for a while , then function is called with empty Iterator and  hasTimedOut=true
+userActions.groupByKey(_.userId).mapGroupsWithState(timeoutConf)(updateState)
+1. you need to set withWatermark
+userActions.withWatermark("timestamp").....mapGroupsWithState(EventTimeTimeout)(updateState)
+
+2. update function to add explicitly timeout
+def updateState(...): UserStatus = {
+  if (!state.hasTimedOut) {
+    state.setTimeoutTimestamp(maxActionTimestamp, "1 hour")  
+  } else {
+    userStatus.handleTimeout()    // need to set up each time, as function is executed each time
+    state.remove()
+  }
+}
 
 
 
+val progress = query.lastProgress
+print (progress.json)
+query.awaitTermination()
+query.exception()
+query.sourceStatuses()
+query.sinkStatus()
 
 
 
@@ -202,8 +468,80 @@ df.selectExpr("CAST(key AS STRING)", "CAST(value AS STRING)")
 windows()
 reduceByWindow()
 reduceByKeyAndWindow()
-  val hashTagCounts = hashtagKeyValues.reduceByKeyAndWindow( (x,y) => x+y, (x,y) => x-y, Seconds(300), Seconds(1))
+  val hashTagCounts = hashtagKeyValues.reduceByKeyAndWindow( (x,y) => x+y, (x,y) => x-y, Seconds(300), Seconds(1))  // windowSize, slidingInterval
+  // batched going IN  +  ,  and those going OUT of the window -
+  wordStream.checkpoint(checkpointInterval)
+
+
   val sortedResults = hashTagCounts.transform( rdd => rdd.sortBy(x => x._2, false))
 updateStateyKey() - mainstane state accross many batches, e.g. running count
 
 https://www.coursera.org/learn/big-data-analysis/home/week/6
+
+
+// STATEFUL: GLOBAL AGGREGATIONS
+val stateSpec = StateSpec.function(updateState _)
+  .initialState(initialRDD)
+  .numPartitions(100)
+  .partitioner(MyPartitioner()) //or hash
+  .timeout(Minutes(120))
+val wordCountState = wordStream.mapWithState(stateSpec)
+
+def updateState(batchtime: Time,  // current batch time
+                key: String,      // a word in the input stream
+                value: Option[Int],  // current value (= 1)
+                state: State[Long])  // counts so far for the word
+      : Option[(String, Long)]        // the word and its new count
+
+
+
+// Achieving good throughput (2016), this below is better than repartition
+val numStreams = 5
+val inputStreams = (1 to numStreams).map(i => context.socketStream(...))
+val fullStream = context.union(inputStreams)
+fullStream.map(...).filter(...).saveAsHadoopFile(...)
+
+
+// combine SQL and Stream processing
+inputStream.foreachRDD { rdd => 
+  val df = SQLContext.createDataFrame(rdd)
+  df.select(...).where(...).groupBy(...)
+}
+
+// how to restart driver  (in spark-defaults.conf),  e.g. accept 2 failuter per 1h
+spark.yarn.maxAppAttempts=2
+spark.yarn.am.attemptFailuresValidityInterval=1h
+
+// spark has configurable metrics system,  based on DropWizard Metrics Library,   we can drop to Grafana/Graphite
+
+// enable WAL for RECEIVER based sources
+// data on receiver is stored in executor memory which can crash
+// with WAL data is written to durable storage (HDFS, S3), before being ack back to source
+spark.streaming.receiver.writeAheadLog.enable=true
+spark.streaming.receiver.writeAheadLog.closeFileAfterWrite=true // for S3
+// but WAL creates additional copy, so 
+StorageLevel.MEMORY_AND_DISK_SER   -> use for your input DStreams, disable in memory replication (already replicated in hdfs)
+// for Kafka no need for WAL, use DIRECT CONNECTOR
+
+// shutdown gracefully
+run in CLUSTER mode, (and --supervise when standalone)
+//spark-submit -master <masterURL> -kill <driverID>
+spark.streaming.stopGracefullyOnShutdown=true
+
+StreamingContext.stop(stopSparkContext = true, stopGracefully = true)    // delete file with marker file on hdfs, you delete
+
+// restructuring code for Checkpointing
+def creatingFunc(): StreamingContext = {
+  val context = new StreamingContext(...)
+  val lines = KafkaUtils.createStream(...)
+  val words = lines.flatMap(...)
+  ...
+  context.checkpoint(hdfsDir)
+}
+//pull all setup code into a function that returns a new StreamingContext
+val context = StreamingContext.getOrCreate(hdfsDir, creatingFunc)
+context.start()
+
+
+unionedStream.repartition(40) // more receivers@
+

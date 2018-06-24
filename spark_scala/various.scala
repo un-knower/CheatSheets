@@ -36,6 +36,7 @@ conf.set("spark.sql.codegen", "true")  // PERFORMANCE options
 conf.set(“spark.io.compression.codes”, “lzf”)
 conf.set(“spark.speculation”,”true”)
 spark.conf.set("spark.sql.shuffle.partitions", 10) 
+spark.conf.set("spark.sql.shuffle.partitions", "1")  // keep the size of shuffles small
 spark.conf.set("spark.executor.memory", "2g")
 
 //get all settings
@@ -213,13 +214,33 @@ res11:  ()org.apache.spark.rdd.RDD
 // ************************************************************************************************
 // ****************************** WINDOW WINDOWING BASED FUNCTIONS ********************************
 // ************************************************************************************************
+// will give you exactly same number of records as on input  (groupby - at most)
+// rank, dense_rank, percent_rank, ntile, row_number, cume_dist, lag, lead
+// WindowSpecification defines which rows are included in a window given in a row
 import org.apache.spark.sql.expressions.Window
+val byHtokens                        = Window.partitionBy($"token" startsWith "h") .....
 val accountNumberPrevious4WindowSpec = Window.partitionBy($"AccountNumber")
                                             .orderBy($"Date").rowsBetween(-4,0)  // .rangeBetween( based on value )
 // Long.MinValue = Window.unboundedPreceding
 // Long.MaxValue = Window.unboundedFollowing
 // 0 = Window.currentRow
 val rollingAvgForPrevious4PerAccount = avg($"Amount").over(accountNumberPrevious4WindowSpec)
+
+// over column operator defines a windowing column (aka analytic clause)
+// applies aggregate function over window
+val overUnspecifiedFrame = $"someColumn".over()
+val overRange = $"someColumn" over someWindow
+// use withColumn or select  operators
+numbers.withColumn("max", max("num") over dividedBy2)
+
+
+val joinsed = ids.join(sums).where($"group" === $"id" % 2)
+//  id   |   collect_list(id)
+//  0       [0,2,4,6]
+//  1       [1,3,5,7]
+//  2       [0,2,4,6]
+val byWindow = Window.paritionBy($"id" % 2)
+ids.withColumn("list", collect_list("id") over byWindow).show
 
     
 financeDetails = spark.read.json("...")
@@ -297,8 +318,6 @@ access_log.groupBy("ip").pivot("url", top_url_list).fillna(0).count().limit(5).t
 
 
 
-
-
 // ************************************************************************************************
 // ***************************  READ CSV AND EXPLICIT SCHEMAS *************************************
 // ************************************************************************************************
@@ -311,11 +330,14 @@ val df = spark.read.schema(schema).csv("/user/....")
 
 val rdd = sc.parallelize( Row(52.23, 21.01, "Warsaw") :: Row(42.30, 9.15, "Corte") :: Nil)  //to
 val rdd = sc.parallelize( Array(Row(52.23, 21.01, "Warsaw") , Row(42.30, 9.15, "Corte")))   //samo
-val schema = StructType(                                                    StructType(Array(
-                StructField("lat", DoubleType, false) ::                        StructField("lat", DoubleType),
-                StructField("long", DoubleType, false) ::                       StructField("long", DoubleType),
-                StructField("key", StringType, false) ::Nil)                    StructField("key", StringType)))
-                StructField("keyValueMap", ArrayType(MapType(StringType, IntegerType))) :: Nil)
+val schema =
+StructType().              StructType(                                      StructType(Array(
+ .add("lat", DoubleType)    StructField("lat", DoubleType, false) ::         StructField("lat", DoubleType),
+ .add("long", DoubleType)   StructField("long", DoubleType, false) ::        StructField("long", DoubleType),
+ .add("key", StringType)    StructField("key", StringType, false) ::Nil)     StructField("key", StringType)))
+ .add("kVmap",ArrayType     StructField("keyValueMap", ArrayType(MapType(StringType, IntegerType))) :: Nil)
+ (new StructType().add(.....))
+
 val df = sqlContext.createDataFrame(rdd, schema)
 
 
@@ -434,6 +456,8 @@ val employeesDF = df.select($"company", expr("employee.firstName as firstName"))
 // org.aapache.spark.sql.DataFrame = [company: string, firstName: string]
 
 posexplode($"employees").as(Seq("employeePosition", "employee"))).show
+.select(explode($"records") as 'record)
+
 
 
 
@@ -497,6 +521,19 @@ val df = spark.createDataFrame(rdd, schema)
 df.collect  // it will fail only during ACTION !
 val ds = spark.createDataset(rdd, schema)  // will fail instantly, that's DF vs DS
 toLocalIterator , same as collect but takes less space (just as much as biggest partition)
+
+
+
+//compute histogram of age by name
+val hist = ds.groupBy(_.name).mapGroups {
+    case (name, people: Iter[Person]) =>
+        val buckets = new Array[Int](10)
+        people.map(_.age).foreach { a =>
+            buckets(a / 10) += 1
+        }
+        (name, buckets)
+}
+
 
 
 
@@ -681,6 +718,14 @@ Array[Int] = Array(411,412,411,411,411,411...)
 val sample = rdd.sample(false, 0.1, 50)     // withReplacement , fraction % , seed)
 val sample2= rdd.takeSample(false, 15, 50)  // will take exactly 15 elements
 rdd.countApprox(100, 0.95)                  // timeout 100 seconds,  95% confidence
+
+  // Create a fraction map where we are only interested:
+  // - 50% of the rows that have answer_count = 5
+  // - 10% of the rows that have answer_count = 10
+  // - 100% of the rows that have answer_count = 20
+  // Note also that fractions should be in the range [0, 1]
+  val fractionKeyMap = Map(5 -> 0.5, 10 -> 0.1, 20 -> 1.0)
+  df.stat.sampleBy("answer_count", fractionKeyMap, 7L).groupBy("answer_count").count().show()
 
 // set
 val questions = sc.parallelize(Array( ("aaa", 1), ("bbb", 2), ("aaa", 5) ))
@@ -958,12 +1003,14 @@ object Utils {
 
 
 // ************************************************************************************************
-// ************************************* TIME FUNCTIONS *******************************************
+// ************************************* TIME TIMING FUNCTIONS ************************************
 // ************************************************************************************************
 access_log.withColumn("unixtime", f.unix_timestamp("timecolumn","dd/MMM/yyyy:HH:mm:ss Z"))  // returns epoch
 access_log.withColumn("unixtime", f.unix_timestamp("timecolumn","dd/MMM/yyyy:HH:mm:ss Z")).astype("timestamp")  // returns 2015-11-11 11:11:11
+                                    unix_timestamp($"record.eventTime", "yyyy-MM-dd'T'hh:mm:ss").cast("timestamp") as 'timestamp, $"record.*")
+date_format(window.end, "MMM-dd HH:mm") as time,
 
-
+val yesterday = date_sub(current_date(), 1)
 
 // ************************************************************************************************
 // ************************************* CACHING ****** *******************************************
@@ -1001,8 +1048,9 @@ rdd.foreach(add_badge)
 
 
 
-// ***************************************
-TIPS
+// ************************************************************************************************
+// ************************************* TIPS *****************************************************
+// ************************************************************************************************
 Compatibility with older systems: 
 sqlContext.setConf("spark.sql.parquet.binaryAsString", "true")          [set spark.sql.parquet.binaryAsString=true]
 
@@ -1013,6 +1061,60 @@ Finding out IDE or other input parameters, so we can run config
     conf.setMaster("local[*]")
     }
 
+
+// Tokenize the wiki content
+val tokenizer = new Tokenizer().setInputCol("content").setOutputCol("words")
+val wordsDf = tokenizer.transform(dfUsed)
+
+
+
+
+// salting
+"Foo" + random.nextInt(saltFactor)
+// isolated salting, only to NULLs  for example
+
+//use ReduceByKey over GroupByKey !!!!!!
+// use TreeReduce ove Reduce    //reduce brings everything back to driver,    TreeReduce does more work on execurtors
+
+conf.set("spark.io.compression.codes", "lzf")   // snappy is ok, but LZF may give better performance
+conf.set("spark.speculation", "true")           // help prevent stragglers
+
+//optimization of loading
+val df = spark.read.table("tab.x").filter('ss_sold_date is in (222,333,555))    // speed up loading time,   ss_sold_date is partition
+MSCK REPAIT TABLE tab.x;    // for unmanaged tables - partition discovery runs once, use   saveAsTable or insertInto to add new partitions
+
+// same with DF API
+// managed
+df1.write.partitionBy("ss_sold_date").saveAsTable("tab.x")
+// unmanaged
+df1.write.partitionBy("ss_sold_date").option("path", "/tmp/some/path/x").saveAsTable("tab.x")
+
+
+
+// better schema inference
+val schemaDF = spark.read.format("csv").option("header", "true").option("inferSchema", "true").load(sampleFile)
+val df = spark.read.format("csv").option("header", "true").schema(schemaDF.schema).load("/tmp/path")    // reuse schema from only one file!!
+// even better, save schema
+lazy val useSchema = DataType.fromJson(schemaJSON).asInstanceOf[StructType]
+val df = spark.read.format("csv").option("header", "true").schema(useSchema).load("/tmp/path")
+
+
+//bucketing
+output.write.bucketBy(100, "ss_item_sk").sortBy("ss_item_sk")
+//repartition, to get cleaner files
+output.repartition("some_column").write.partitionBy("some_column").option("path", "/tmp").saveAsTable("tab.x")
+//managing file size
+spark.conf("spark.sql.files.maxRecordPerFile", enable!)
+// adaptive execution
+spark.sql.adaptive.enabled
+spark.sql.adaptive.shuffle.targetPostShuffleInputSize (default 64mb)  SPARK-9850
+
+
+
+
+
+ANALYZE TABLE tab.x COMPUTE STATISTICS
+ANALYZE TABLE tab.x COMPUTE STATISTICS FOR COLUMNS col1, col2, col3
 
 
 
