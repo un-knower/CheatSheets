@@ -11,16 +11,16 @@ git add -A .            # adds everything recursively
 
 git reset <file>        # remove from staging area ,   git reset -- <files>
 git rm '*.txt'
-git rm -r <folder>
-git rm --cached <file>    # to rm from staging area
+git rm -r <folder>		# will remove folder(-r) file from git AND locally
+git rm --cached <file>  	# to rm from staging area, keeping local
+git rm --cached `git ls-files -i -X .gitignore`	# remove files from the repository based on your .gitignore without deleting them from the local file system
+git ls-files -i -X .gitignore | xargs -I{} git rm --cached "{}"	# will include spaces in file names
 
 git clone ssh://user@host/path/to/repo.git
 git commit -am "comment"  # commits ALL (a)
 git remote remove origin
 git remote add origin  git@github.com:kklapec/test-repo.git #SSH (pub)
 git push -u origin master  # --set-upstream
-
-git review master
 
 git pull 					#download changes from remote repo
 git pull origin <branch>

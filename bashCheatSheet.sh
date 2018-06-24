@@ -633,3 +633,10 @@ http://mywiki.wooledge.org/BashSheet#Arrays
 (screen with Ctrl-A d and tmux with Ctrl-B d). You can reattach (as long as you didnt reboot the server) with screen -x to screen and with tmux attach to tmux.
 # Quickly resume a screen session or start one
 alias dr='screen -dr || screen'
+
+
+curl -H @{"Metadata"="true"} -Method POST -Body '{"DocumentIncarnation":"5", "StartRequests": [{"EventId": "f020ba2e-3bc0-4c40-a10b-86575a9eabd5"}]}' -Uri http://169.254.169.254/metadata/scheduledevents?api-version=2017-08-01
+
+# loop through our file of common last names and send it over a local tcp socket
+{ while :; do cat names.txt; sleep 0.05; done; } | netcat -l -p 8088
+
