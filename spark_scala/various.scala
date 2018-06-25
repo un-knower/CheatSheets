@@ -204,9 +204,19 @@ res11:  ()org.apache.spark.rdd.RDD
  
 
 
+// PARQUET TALK , read row
+val DF = spark.read....rdd.map(r => transformRow(r)).toDF
+case class LedZeppelinFlat( Title: Option[String], Released: Option[String]....)
+def transformRow(r: Row): LedZeppelinFlat = {
+    def getStr(r: Row, i: Int) = if(!r.isNullAt(i)) Some(r.getString(i)) else None
+    def getInt(r: Row, i: Int) = if(!r.isNullAt(i)) Some(r.getInt(i)) else None
 
+    LedZeppelinFlat(
+        getStr(r, 0), getStr(r, 1), getInt(r, 2))....
+}
 
-
+hadoop jar /opt/parquet-tools-1.8.2.jar cat  some_file.parquet
+hadoop jar /opt/parquet-tools-1.8.2.jar meta some_file.parquet
 
 
 
@@ -497,7 +507,7 @@ df.select("Title").write.format("text").save("path")  //ok
 df.write.csv("path")                      // ok, but no header
 df.write.option("header","true").csv("path")   // also change sep etc.
 df.write.mode("overwrite").csv("path")          // also APPEND
-
+write.option()"compression", "snappy").parquet(nestedOutput)
 
 
 // ************************************************************************************************
@@ -808,6 +818,12 @@ questions.map( { case (k,v) => v }).histogram(intervals)
 Array[Long] = Array(0, 1, 1, 0, 1)                      // now only array with counts of each interval
 
 
+//using RDD to compute average avg    data.groupBy("dept").avg("age")
+//dataRDD.map(lambda (x,y): (x,(y,1))).reduceByKey(lambda x,y: (x[0]+y[0], x[1]+y[1])).map(lambda (x,(y,z)): (x,y/z))
+data.map { case(dept, age) => dept -> (age,1)}
+    .reduceByKey { case ((a1,c1), (a2,c2)) => (a1+a2, c1+c2)}
+    .map { case (dept, (age,c)) => dept -> age/c}
+
 //  ***************************** JOIN ***********************************
 personDF.join(roleDF, $"col1" === $"col2", JOIN_TYPE)                       // when column names different
 personDF.join(roleDF, personDF("col1") === roleDF("col2"), JOIN_TYPE)       // when column names the same
@@ -816,6 +832,7 @@ personDF.join(roleDF, Seq("Id"), "left_semi") // EXISTS, zostawi tylko DISTINCT 
 personDF.join(roleDF, Seq("Id"), "left_anti") // OPPOSITE EXISTS,, zostawi te ktore nie maja odpowiednika w prawej ! 
 personDF.join(roleDF) == personDF.join(roleDF, Seq("Id"), "cross") == personDF.crossJoin(roleDF)   // wszystkie mozliwe combinations
 // spark.sql.crossJoin.enabled = True
+xx.join(clicks, expr("clickAdID = impressionAdID"))
 
 // DATASET JOIN,   uzywamy  joinWith method
 case class Person(id:Int, first:String, last:String)
@@ -841,6 +858,16 @@ impressionsWithWatermark.join(
 
 
 
+val parsedRDD = rdd.flatMap {
+    line => line.split("""\s+""") match {
+        case Array(project, page, num, _) => Some((project, page, num))
+        case _ => None
+    }
+}
+parsedRDD.filter { case (project, page, num) => project == "en" }
+        .map { case (_, page, num) => (page, num)}
+        .reduceByKey(_ + _)
+        .take(100).foreach { case (page, num) => println(s"$page: $num")}
 
 
 
@@ -1051,6 +1078,15 @@ rdd.foreach(add_badge)
 // ************************************************************************************************
 // ************************************* TIPS *****************************************************
 // ************************************************************************************************
+
+// large RDD to listDatabases
+data.forEachPartition { records => {
+    val connection = new DB(...)
+    records.foreach { record => 
+        connection. .....}
+}}
+
+
 Compatibility with older systems: 
 sqlContext.setConf("spark.sql.parquet.binaryAsString", "true")          [set spark.sql.parquet.binaryAsString=true]
 
@@ -1064,7 +1100,9 @@ Finding out IDE or other input parameters, so we can run config
 
 // Tokenize the wiki content
 val tokenizer = new Tokenizer().setInputCol("content").setOutputCol("words")
-val wordsDf = tokenizer.transform(dfUsed)
+val wordsDf = tokenizer.transform(some_func)         // or   DF inside brackets         // transform is used for streaming, also foreachRDD
+
+def some_func( logs: RDD[String] = { logs.map(_.split(" ")(0) ) } )                     // func defined for normal batch
 
 
 
@@ -1111,14 +1149,59 @@ spark.sql.adaptive.shuffle.targetPostShuffleInputSize (default 64mb)  SPARK-9850
 
 
 
-
-
 ANALYZE TABLE tab.x COMPUTE STATISTICS
+ANALYZE TABLE tab.x COMPUTE STATISTICS noscan           // will let spark know that is small enough for broadcast join
 ANALYZE TABLE tab.x COMPUTE STATISTICS FOR COLUMNS col1, col2, col3
 
 
+// tuning, optimization for large-scale
+// dynamic executor allocation
+spark.dynamicAllocation.enabled = true
+spark.dynamicAllocation.executorIdleTimeout = 2m
+spark.dynamicAllocation.minExecutors = 1
+spark.dynamicAllocation.maxExecutors = 2000
+// configurable max number of fetched failures
+spark.max.fetch.failures.per.stage = 10
+// Out Of Memory too frequent - tune RPC server threads
+spark.rpc.io.serverThreads = 64
 
 
+// executor memory layout
+spark.memory.fraction * ( spark.executor.memory - 300 MB)       // shuffle memory
+(1 - spark.memory.fraction) * (spark.executor.memory - 300 MB)  // user memory
+300 MB // reserved memory
+spark.yarn.executor.memoryOverhead = 0.1 * (spark.executor.memory)  // memory buffer
+
+
+// enable off-heap memory
+spark.memory.offHeap.enabled = true         // shuffle
+spark.memory.offHeap.size = 3g              // shuffle
+spark.executor.memory = 3g                  // user memory
+spark.yarn.executor.memoryOverhead = 0.1 * (spark.executor.memory + spark.memory.offHeap.size)
+
+// GC collection tuning  G1GC suffers from fragmentation due to humongous allocations if object size is > 32 MB
+// use parallel GC instead of G1GC
+spark.executor.extraJavaOptions = -XX:ParallelGCThreads=4 -XX:+UseParallelGC
+
+// eliminate disk I/O bottleneck, tune shuffle buffer
+spark.shuffle.file.buffer = 1 MB
+spark.unsafe.sorter.spill.reader.buffer.size = 1 MB
+// optimize spill files merging
+spark.file.transferTo = false
+spark.shuffle.unsafe.file.output.buffer = 5 MB
+// tune compression block size
+spark.io.compression.lz4.blockSize = 512kB
+// cache index files on shuffle server
+spark.shuffle.service.index.cache.entries = 2048
+// tunr shuffle service worker thread and backlog
+spark.shuffle.io.serverThreads = 128
+spark.shuffle.io.backLog = 8192
+// shuffle registration timeout and retry
+spark.shuffle.registration.timeout = 2m
+spark.shuffle.registration.maxAttempts = 5
+// optimal number of mappers
+num_of_mappers = max(256 MB, inputTableSize / 50000)
+num_of_reducers = max(200, min(10000, max(inputTableSize / 256 MB * 0.125, 200)))
 
 
 case class Account(number: String, firstName: String, lastName: String)
@@ -1197,6 +1280,63 @@ object Detector {
 
 
 
+
+
+
+// ************************************************************************************************
+// ************************************* TESTING  *************************************************
+// ************************************************************************************************
+BAD:
+val splitLines = inFile.map(line => {
+    val reader = new CSVReader(new StringReader(line))
+    reader.readNext()
+})
+
+GOOD:
+def parseLine(line: String): Array[Double] = {
+    val reader = new CSVReader(new StringReader(line))
+    reader.readNext().map(_.toDouble)
+}
+
+then we can:
+test("Should parse a csv with numbers") {
+    MoreTestableLoadCsvExample.parseLine("1,2") should equal (Array[Double](1.0, 2.0))
+}
+
+// testing with RDD
+trait SSC extends BeforeAndAfterAll { self: Suite =>
+    @transient private var _sc: SparkContext = _
+    def sc: SparkContext = _sc
+
+    var conf = new SparkConf(false)
+
+    override def beforeAll() {
+        _sc = new SparkContext("local[*]", "test", conf)
+        super.beforeAll()
+    }
+
+    override def afterAll() {
+        LocalSparkContext.stop(_sc)
+        _sc = null
+        super.afterAll()
+    }
+}
+
+
+test("should parse csv with numbers") {
+    val input = sc.parallelize(List("1,2"))
+    val result = input.map(parseLine)
+    result.collect() should equal (Array[Double](1.0, 2.0))
+}
+
+// testing with DStreams
+class SampleStreamingTest extends StreamingSuiteBase {
+    test("really simple transform") {
+        val input = List(List("hi"), List("hi holden"), List("bye"))
+        val expect= List(List("hi"), List("hi", "holden"), List("bye"))
+        testOperation[String, String](input, tokenize _, expect, useSet = true)
+    }
+}
 
 
 // monitoring console  localhost:4040/SQL

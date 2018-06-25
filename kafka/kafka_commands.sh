@@ -27,7 +27,7 @@ kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic test --from-
 
 # 3. run Producer console
 kafka-console-producer.sh --broker-list localhost:9092 --topic test \
-							--property parse.key=true --property key.separator=,			# we can write e.g.   123,{"josh":"90000"}
+							--property parse.key=true --property key.separator=,	< "c:\file.txt"		# we can write e.g.   123,{"josh":"90000"}
 
 
 # mirroring, replicating data between clusters (topics may vary in no. of part between clusters)
@@ -154,6 +154,7 @@ connect-standalone.sh  -->  put params in  server.properties
 offset.storage.file.filename  # offset for topics while reading
 # CONNECTORS - DISTRIBUTED ,  dont include offset.storage.file.filename , as they do not use file, they use TOPICS
 # passed config via JSON,   name, tasks.max,  connector.class,  key.converter, value.converted
+# all described in   connect-distributed.properties   in kafka folder
 group.id  # property, connects cluster
 config.storage.topic  # default:   connect-configs topic,  connect-status
 offset.storage.topic  # no choice for partitions, replication factors
@@ -284,3 +285,12 @@ sample JSON issues: https://api.github.com/repos/kubernetes/kubernetes/issues?st
 MAVEN, start, new, MAVEN,  GroupID:  io.confluent.maven    ArtifacteId=kafka-connect-quickstart   Ver 0.10.0.0
 after creating project, later in  pom.xml, change  <properties> version to 0.10.2.0
 http://www.confluent.io/wp-content/uploads/Partner-Dev-Guide-for-Kafka-Connect.pdf?x18424
+
+## RUN ON PROD
+edit connect-distributed.properties. For each worker type DIFFERENT rest.port, everything else is same
+then run on each
+bin/connect-distributed.sh config/connect-distributed.properties
+bin/connect-distributed.sh config/connect-distributed-2nd-worker.properties 	# different port!
+
+## UI
+github.com/Landoop/kafka-connect-ui
