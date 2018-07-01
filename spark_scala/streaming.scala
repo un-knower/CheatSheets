@@ -329,6 +329,23 @@ ds.groupByKey(_.deviceType).agg(typed.avg(_.signal))      // using typed API
 ///////////////////////
 
 
+//FRANK
+import org.apache.spark.streaming.kafka._
+import kafka.serializer.StringDecoder
+object KafkaExample {
+  def main(args: Array[String]) {
+    val ssc = new StreamingContext("local[*]", "example", Seconds(1))
+    val kafkaParams = Map("metadata.broker.list" -> "localhost:9092")
+    val topics = List("testLogs").toSet
+    val lines = KafkaUtils.createDirectStream[String, String, StringDecder, StringDecder] (ssc, kafkaParams, topics).map(_._2)  // to only get messages
+    val requests = lines.map(x => { val matcher:Matcher = pattern.matcher(x); if (matcher.matches()) matcher.group}) // extracts the request field from each log line
+    val urls = requests.map(x => { val arr = x.toString().split(" ") ; if (arr.size == 3) arr(1) else "[error]"}) // extracts URL from request
+    val urlCounts = urls.map(x => (x,1)).reduceByKeyAndWindow(_+_, _-_, Seconds(300, Seconds(1)))   // reduce by URL over 5-min window sliding every second
+    val sortedResults = urlCounts.transform(rdd => rdd.sortBy(x => x._2, false)).print()
+
+  }
+}
+
 
 
 // ----------------------------------- WINDOWING
@@ -508,6 +525,19 @@ inputStream.foreachRDD { rdd =>
   df.select(...).where(...).groupBy(...)
 }
 
+dstream.foreachRDD { rdd =>
+  rdd.cache()
+  val alternatives = restServer.get("/v1/alternatives").toSet // executed on Driver
+  alternatives.foreach { a =>
+    val asRecords = rdd.map(e => asRecord(e))
+    asRecords.foreachPartition { p =>
+      val conn = DB.connect(server)
+      p.foreach(e => conn.insert(e))                  // on workers
+    }
+  }
+  rdd.unpersist(true)
+}
+
 // how to restart driver  (in spark-defaults.conf),  e.g. accept 2 failuter per 1h
 spark.yarn.maxAppAttempts=2
 spark.yarn.am.attemptFailuresValidityInterval=1h
@@ -545,3 +575,77 @@ context.start()
 
 unionedStream.repartition(40) // more receivers@
 
+
+
+
+
+// ConstantInputDStream, always returns same RDD on each step, useful for testing
+// https://youtu.be/iIo1hN-2JEI
+class ConstantInputDStream[T: Classtag](_ssc: StreamingContext, rdd: RDD[T])
+
+val constantDStream = new ConstantInputDStream(ssc, rdd)
+
+// but we can generate data, by e.g. creating function that generates data, and applying it each time to generate dataset
+import scala.util.Random
+val sensorId: () => Int = () => Random.nextInt(sensorCount)
+val data: () => Double = () => Random.nextDouble
+val timestamp: () => Long = () => System.currentTimeMillis
+val recordFunction: () => String = { () => 
+  if (Random.nextDouble < 0.9) { Seq(sensorId().toString, timestamp(), data()).mkString(",") }
+  else { "||-corrupt-^&##$" }
+}
+val sensorDataGenerator = sparkContext.parallelize(1 to n).map(_ => recordFunction)   // to wszystko   RDD[() => Record]
+val sensorData = sensorDataGenerator.map(recordFun => recordFun())
+val rawDStream = new ConstantInputDStream(streamingContext, sensorData)
+
+// ConstantInputDStream + foreachRDD = Reload External Data periodically 
+var sensorRef = sparkSession.read.parquet(s"$refFile") 
+sensorRef.cache()
+
+val refreshDStream = new ConstantInputDStream(streamingContext, sparkContext.emptyRDD[Int])
+val refreshIntervalDStream = refreshDStream.window(Seconds(300), Seconds(300))   // every 5min
+refreshIntervalDStream.foreachRDD { _ => 
+  sensorRef.unpersist(false)
+  sensorRef = sparkSession.read.parquet(s"$refFile")
+  sensorRef.cache()
+  }
+
+
+// DStream + foreachRDD = REload External Data with a Trigger
+// we are transforming one DStream in another
+var sensorRef = sparkSession.read.parquet(s"$refFile") 
+sensorRef.cache()
+
+val triggerRefreshDStream: DStream = // create, e.g. kafka
+
+val referenceStream = triggerRefreshDStream.transform { rdd =>
+  if (rdd.take(1) == "refreshNow") {
+    sensorRef.unpersist(false)
+    sensorRef = sparkSession.read.parquet(s"$refFile")
+    sensorRef.cache()
+  }
+  sensorRef.rdd
+}
+incomingStream.join(referenceStream) ....
+
+
+// Keeping Arbitrary state (BAD!!!!!, rosnie wykladniczo!!!)   https://gist.github.com/maasg/9d51a2a42fc831e385cf744b84e80479
+val baseline: Dataset[Features] = sparkSession.read.parquet(file).as[Features]
+...
+stream.foreachRDD { rdd =>
+  val incomingData = sparkSession.createDataset(rdd)
+  val incomingFeatures = rawToFeatures(incomingData)
+  val analyzed = compare(incomingFeatures, baseline)
+  baseline = (baseline union incomingFeatures).filter(isExpired)
+}
+
+
+// rolling roll own checkpoints
+cycle = (cycle + 1) % checkpointInterval
+if (cycle == 0) {
+  checkpointFile = (checkpointFile + 1) % 2
+  baseline.write.mode("overwrite").parquet(s"$targetFile_$checkpointFile")
+  baseline = baseline.read(s"$targetFile_$checkpointFile")
+}
+
+// Probabilistic Accululator   https://github.com/StreamProcessingWithSpark/HLLAccumulator

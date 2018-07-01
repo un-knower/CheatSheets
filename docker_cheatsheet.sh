@@ -23,11 +23,11 @@ docker-machine stop
 VBoxManage modifyvm default --cpus 2
 VBoxManage modifyvm default --memory 4096
 docker-machine start
-docker run -it --memory-reservation 1G <name> /bin/bash
+docker run -it --rm --memory-reservation 1G <name> /bin/bash
 
 # OR CREATE NEW MACHINE (VMBOX)
 docker-machine rm default
-docker-machine create -d virtualbox --virtualbox-memory=4096 --virtualbox-cpu-count=2 --virtualbox-disk-size=50000 default
+docker-machine create --driver virtualbox --virtualbox-memory=4096 --virtualbox-cpu-count=2 --virtualbox-disk-size=50000 default
 
 # ENABLE DOCKER @ BOOT
 sudo systemctl enable docker
@@ -55,7 +55,8 @@ docker run -d --name=<name> tobert/cassandra
 docker run -d -p 80:80 --name=<name> nginx   #  -P is for --publish-all on RANDOM ports
 docker run -it -p 80:80 --name=<name> nginx <overwrite command e.g. bash>
 docker run -it -p 8888:8888 -m 8g -c 4 
-docker run -ti --c 512 agileek/cpuset-test    # 1024 = 100% CPU,  512 = 50% CPU
+docker run -it --c 512 agileek/cpuset-test    # 1024 = 100% CPU,  512 = 50% CPU
+docker run -it --rm --cpus=2.0 --memory=2000M 
 
 docker exec <container_ID> cat /etc/*release*         # execute command in container
 docker attach <container_ID>                          # attach detached -d container back
@@ -136,7 +137,7 @@ docker-machine ip  # on Windows Docker Toolbox, that gives virtualbox IP, which 
 VOLUME /var/lib/postresql       # Dockerfile
 docker run -d  --name=alpha -v /var/myvolume  training/postgresql bash
 docker run -it --name=beta --volumes-from alpha training/postgresql bash
-docker run -it -v [host-path]:[container-path]:[rw|ro]  #   -v "$(pwd)" :/opt/names
+docker run -it -v [host-path]:[container-path]:[rw|ro]  #   -v "$(pwd)" :/opt/names  ,  if we add   rw,z --> share with other containers
 
 docker run -it -v /var/run/docker.sock:/docker.sock ubuntu bash # bad ideas a container gets root
 nc -U //var/run/docker.sock   ## GET /imapges/json http/1.1 http/1.1 200 OK

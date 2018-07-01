@@ -39,6 +39,7 @@ kafka-configs.sh --zookeeper host:IP --describe --entity-type users --entity-nam
 kafka-configs.sh --zookeper host:port --alter --add-config 'producer_byte_rate=2048,consumer_byte_rate=2048,request_percentage=200' --entity-type users --entity-name user1 --entity-type clients --entity-name <consumer/group ID>
 
 
+kafka-reassign-partitions.sh --zookeper localhost:2181 --topics-to-move-json-file topics-to-move.json --broker-list "5,6" --generate
 
 
 # TRANSFORMATIONS - used to modify data in transit

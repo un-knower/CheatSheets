@@ -31,11 +31,11 @@ import org.apache.hadoop.mapreduce.lib.input.TextInputFormat
 val conf = new SparkConf()  //  .setMaster("local").setAppName("My App").set("xxxxx", "yy")
 conf.set("spark.app.name", "My Spark App") 
 conf.set("spark.master", "local[4]") 
-conf.set("spark.ui.port", "36000") // Override the default port 
+conf.set("spark.ui.port", "36000") // Override the default port      spark.ui.enabled=False???
 conf.set("spark.sql.codegen", "true")  // PERFORMANCE options 
 conf.set(“spark.io.compression.codes”, “lzf”)
 conf.set(“spark.speculation”,”true”)
-spark.conf.set("spark.sql.shuffle.partitions", 10) 
+spark.conf.set("spark.sql.shuffle.partitions", 10)    (def 200)
 spark.conf.set("spark.sql.shuffle.partitions", "1")  // keep the size of shuffles small
 spark.conf.set("spark.executor.memory", "2g")
 
@@ -52,6 +52,32 @@ val sqlCtx  = new SQLContext(sc) //depreciated
 import hiveCtx._ 
 
  
+// Ted Malaska
+val runLocal = args(0).equals("L")
+val inputFolder = args(1)
+val filterWordFile = args(2)
+val sc:SparkContext = if (runLocal) {
+    val sparkConfig = new SparkConf()
+    sparkConfig.set("spark.broadcast.compress", "false")
+    sparkConfig.set("spark.shuffle.compress", "false")
+    sparkConfig.set("spark.shuffle.spill.compress", "false")
+    new SparkContext("local[2]", "DataGenerator", sparkConfig)
+} else {
+    val sparkConf = new SparkConf().setAppName("DataGenerator")
+    new SparkContext(sparkConf)
+}
+val filterWordSetBc = sc.broadcast(scala.io.Source.fromFile(filterWordFile).getLines.toSet)
+val inputRDD = sc.textFile(inputFolder)
+val filteredWordCount: RDD[(String, Int)] = filterAndCount(filterWordSetBc, inputRDD)
+filteredWordCount.collect().foreach{case ( name: String, count: Int) => println(" = " + name + ":" +  count)}
+sc.stop()
+
+def filteredWordCount(filterWordSetBc: Broadcast[Set[String]], inputRDD: RDD[String]): RDD[(String, Int)] = {
+    val filteredWordCount: RDD[(String, Int)] = inputRDD.map(r => r.split(" ")).flatMap(a => a).filter(!filterWordSetBc.value.contains(_)).map((_, 1)).reduceByKey(_+_)
+    return filteredWordCount
+}
+
+
  // SparkSession (2.x)
 object myApp { 
   def main(args: Array[String]) { 
@@ -143,14 +169,23 @@ Logger.getLogger("org").setLevel(Level.OFF)
 	rootLogger.setLevel(Level.ERROR) 
   }
 spark = new SparkContext(sc)
-c
 
 val LOGGER = LogManager.getLogger(this.getClass.getName)
 LOGGER.error(“jakis tam error”)
 
+spark.eventLog.enabled=true
+spark.eventLog.dir=/dir
 
-
-
+// spark listener
+val LOGGER = LogManager.getLogger("CustomListener")
+class CustomListener extends SparkListener {
+    override def onStageCompleted(stageCompleted: SparkListenerStageCompleted): Unit = {
+        LOGGER.warn(s"Stage Completed, runTime: ${stageCompleted.stageInfo.taskMetrics.executorRunTime}", s"cpuTime: ${stageCompleted.stageInfo.taskMetrics.executorCpuTime}")
+    }
+}
+val myListener = new CustomListener
+sc.addSparkListener(myListener)
+spark.time(sql("select count(*) from range(x) cross join range(x)").show)
 
 // ************************************************************************************************
 // **************************************** RDD  **************************************************
@@ -220,7 +255,6 @@ hadoop jar /opt/parquet-tools-1.8.2.jar meta some_file.parquet
 
 
 
-
 // ************************************************************************************************
 // ****************************** WINDOW WINDOWING BASED FUNCTIONS ********************************
 // ************************************************************************************************
@@ -269,7 +303,10 @@ implicit class DataFrameHelper[T](ds: Dataset[T]) {    // typed
 
 
 
-case class Status(id:Int, customer:String, status:String)
+case class Status(id:Int, customer:String, status:String) {
+    def weCanPutSomeFunctionAsWell: String = s"""{"id":"$id", "customer":"$customer"}"""
+    // and then refer to it as  e.g.   statusJSON = statusDF.map(x => x.weCanPutSomeFunctionAsWell)
+}
 val statuses = spark.createDataFrame(List(Status(1, "Justin", "New"), Status(2, "A", "Open"), Status(3, "B", "Resolved")))
 statuses.select($"id", $"customer", $"status", lag($"status", 1, "N/A").over(Window.orderBy($"id").partitionBy($"customer")).as("prevStatus"), 
 |                                                          row_number().over(Window.orderBy($"id").partitionBy($"customer"))).show
@@ -332,6 +369,14 @@ access_log.groupBy("ip").pivot("url", top_url_list).fillna(0).count().limit(5).t
 // ***************************  READ CSV AND EXPLICIT SCHEMAS *************************************
 // ************************************************************************************************
 import org.apache.spark.sql.types.{DoubleType, StringType, StructField, StructType} 
+
+// better schema inference
+val schemaDF = spark.read.format("csv").option("header", "true").option("inferSchema", "true").load(sampleFile)
+val df = spark.read.format("csv").option("header", "true").schema(schemaDF.schema).load("/tmp/path")    // reuse schema from only one file!!
+// even better, save schema
+lazy val useSchema = DataType.fromJson(schemaJSON).asInstanceOf[StructType]
+val df = spark.read.format("csv").option("header", "true").schema(useSchema).load("/tmp/path")
+
 // with dataframes files are read on load !!!
 val df = spark.read.option("inferSchema", "true").option("sep", "|").option("header", "true").csv("/user/...")       // option
 val df = spark.read.options(Map("inferSchema"->"true", "sep"->"|", "header"->"true")).csv("/user/...")        // option s
@@ -349,6 +394,28 @@ StructType().              StructType(                                      Stru
  (new StructType().add(.....))
 
 val df = sqlContext.createDataFrame(rdd, schema)
+
+// start!
+hc.sql("create external table XXX (user string, time string)" + "location '" + outputTableLocation + "'")
+val rowRDD = sc.textFile(..).map(r => Row(r.split(",")))
+
+// 1.create from scratch manually
+val userField = new StructField("user", StringType, nullable = true)
+val timeField = new StructField("time", StringType, nullable = true)
+val schema = new StructType(Array(userField, timeField))
+hc.createDataFrame(rowRDD, schema).createOrReplaceTempView("temp")
+hc.sql("insert into XXX select * from temp")
+
+// 2.taking a schema from a Table  (instead of 1)
+val emptyDF = hc.sql("select * from XXX limit 0")
+hc.createDataFrame(rowRDD, emptyDF.schema).createOrReplaceTempView("temp")
+hc.sql("insert into XXX select * from temp")
+
+
+// NESTED DataFrame
+hc.sql("create external table XXX (" + "user string," + "items array<struct< amount: string >>)" + "location...")
+val rowRDD = sc.parallelize(Array(Row("bob", Seq(Row(1,2,3,4)))))
+
 
 
 // for JSON
@@ -417,14 +484,11 @@ sqlContext.createDataFrame(pandas.DataFrame([[1, 2]])).collect()  # doctest: +SK
 df = sc.parallelize([(1, "foo"), (2, "x"), (3, "bar")]).toDF(("k", "v"))
 
 
-
-//
 from pyspark.sql import Row
 >>> df = sc.parallelize([ Row(name='Alice', age=5, height=80),Row(name='Alice', age=5, height=80),Row(name='Alice', age=10, height=80)]).toDF()
 
 val companiesRDD = spark.sparkContext.makeRDD(jsonCompaniesLISTA)
 val companiesDF  = spark.read.json(companiesRDD)
-
 
 
 
@@ -524,8 +588,6 @@ val primi_DS.filter('ColumnName < 533)  // we can use it to reference column
 val miniDS = ds.map(p => (p.Id, p.Score))       // org.apache.spark.sql.Dataset[(Int, Integer)] = [_1: int, _2: int]    // typed transf.
 val miniDF = ds.select($"Id", $"Score")        // org.apache.spark.sql.DataFrame = [Id: int, Score: int]                // untyped transf.
 
-val schema = StructType(List(
-    StructField("test", BooleanType, true)))
 val rdd = spark.sparkContext.parallelize(List(Row(0), Row(true), Row("stuff")))
 val df = spark.createDataFrame(rdd, schema)
 df.collect  // it will fail only during ACTION !
@@ -578,6 +640,8 @@ df = spark.read.format("jdbc")
     .option("user", "scm_user").option("password", "pss")
     .load
 
+// check specification of table
+sparkContext.sql("DESC FORMATTED table1").collect.foreach(println)
 
 // ************************************************************************************************
 // ****************************************** CATALOG *********************************************
@@ -694,6 +758,9 @@ Array[Array[String]] = Array(Array(How, can, I, see.....))               // list
 val c = records.map(r => Customer(r(0), r(1).trim.toInt, r(2), r(3)) )
 c.registerAsTable("customers")
 
+// keyBy   rdd is  (word, count), e.g.   (something, 10)
+val x = rdd.keyBy { case (word, count) => count }.sortByKey(ascending=false)      // and we get  (count, (word, count))   czyli wyciagamy key naprzod, reszta zostaje
+
 
 // sortByKey
 word_count.map({ case (x, y) => (y, x) }).sortByKey(false).map( x => x.swap).collect()  // Array[(String, Int)]
@@ -728,7 +795,7 @@ Array[Int] = Array(411,412,411,411,411,411...)
 val sample = rdd.sample(false, 0.1, 50)     // withReplacement , fraction % , seed)
 val sample2= rdd.takeSample(false, 15, 50)  // will take exactly 15 elements
 rdd.countApprox(100, 0.95)                  // timeout 100 seconds,  95% confidence
-
+val sample = df.sample(true, 0.1)   // 10% of whole DF
   // Create a fraction map where we are only interested:
   // - 50% of the rows that have answer_count = 5
   // - 10% of the rows that have answer_count = 10
@@ -785,6 +852,7 @@ questions.reduceByKey(_+_).lookup("aaa")(0)
 Int = 6
 
 // aggregateByKey, like reduceByKey but takes initial value and allows specifying functions for merging and combining
+// reduceByKey - when types are the same                aggregateByKey - doesn't require types to be the same        avoid groupByKey (unless you have unique keys)
 val for_keeping_count = (0, 0)      // total point, number of questions
 def combining (tuple_sum_count: (Int, Int), next_score: Int) =
     (tuple_sum_count._1 + next_score,  tuple_sum_count._2 + 1)      // for same partition
@@ -1029,6 +1097,16 @@ object Utils {
 }
 
 
+// how to avoid lineage explosions (if DF has too long query plan)
+def cutLineage(df: DataFrame): DataFrame = {
+    val sqlCtx = df.sqlContext
+    val rdd = df.rdd
+    rdd.cache()
+    sqlCtx.createDataFrame(rdd, df.schema)
+}
+
+
+
 // ************************************************************************************************
 // ************************************* TIME TIMING FUNCTIONS ************************************
 // ************************************************************************************************
@@ -1044,7 +1122,6 @@ val yesterday = date_sub(current_date(), 1)
 // ************************************************************************************************
 import org.apache.spark.storage.StorageLevel
 rdd.persist(StorageLevel.DISK_ONLY) //unpersist
-
 
 
 // ************************************************************************************************
@@ -1071,15 +1148,49 @@ val accumulator_badge = sc.longAccumulator("BadgeAccumulator")
 def add_badge(item: (String, String)) = accumulator_badge.add(1)
 rdd.foreach(add_badge)
 
-
+// using accumulator for validation
+val (ok, bad) = (sc.accumulator(0), sc.accumulator(0))
+val records = input.map { x => if (isValid(x)) ok +=1  else  bad +=1}
+// an action , count, save here..
+if (bad.value > 0.1 * ok.value) {
+    throw Exception("bad data - do not use results")
+}
 
 
 
 // ************************************************************************************************
 // ************************************* TIPS *****************************************************
 // ************************************************************************************************
+// encaptulation, issues, wrapping, serialization issues with JVM memory  https://youtu.be/J5Gu012T22U
+import org.apache.spark.util.SizeEstimator
+val N = 1100*1000*1000   // 1.1 billion
+val array = Array.fill[Short][N](0)    // Array[Short] = Array(0,0,0,0,0,0...)
+SizeEstimator.estimate(array)       // 2.2 GB !
+val b = sc.broadcast(array)
+SizeEstimator.estimate(b)
+sc.parallelize(0 until 100000).map(i => b.value(i))     // CRASH !!!!  because it will closure array
 
-// large RDD to listDatabases
+// solution 1, use transient
+@transient val array = Array.fill[Short][N](0)    // Array[Short] = Array(0,0,0,0,0,0...) SOLVES THE PROBLEM
+
+// solution 2, split into separate objects
+object Data {
+    val N= 1100...
+    val array = 
+        val getB = sc.broadcast(array)
+}
+object Work {
+    def run(): Unit = {
+        val b = Data.getB       // local ref!
+        val rdd = sc.parallelize(...).map(i => b.value(i))  // only needs b
+        rdd.take(10).forach(println)
+    }
+}
+
+
+
+
+//...................................... large RDD to listDatabases
 data.forEachPartition { records => {
     val connection = new DB(...)
     records.foreach { record => 
@@ -1129,16 +1240,12 @@ df1.write.partitionBy("ss_sold_date").option("path", "/tmp/some/path/x").saveAsT
 
 
 
-// better schema inference
-val schemaDF = spark.read.format("csv").option("header", "true").option("inferSchema", "true").load(sampleFile)
-val df = spark.read.format("csv").option("header", "true").schema(schemaDF.schema).load("/tmp/path")    // reuse schema from only one file!!
-// even better, save schema
-lazy val useSchema = DataType.fromJson(schemaJSON).asInstanceOf[StructType]
-val df = spark.read.format("csv").option("header", "true").schema(useSchema).load("/tmp/path")
+
 
 
 //bucketing
-output.write.bucketBy(100, "ss_item_sk").sortBy("ss_item_sk")
+SET spark.sql.sources.bucketing.enabled=true
+output.write.bucketBy(100, "ss_item_sk").sortBy("ss_item_sk").saveAsTable("tab.x")  // CREATE TABLE...USING PARQUET CLUSTERED BY (col1,col2) SORTED BY (col1) INTO 10 BUCKETS
 //repartition, to get cleaner files
 output.repartition("some_column").write.partitionBy("some_column").option("path", "/tmp").saveAsTable("tab.x")
 //managing file size
@@ -1202,6 +1309,11 @@ spark.shuffle.registration.maxAttempts = 5
 // optimal number of mappers
 num_of_mappers = max(256 MB, inputTableSize / 50000)
 num_of_reducers = max(200, min(10000, max(inputTableSize / 256 MB * 0.125, 200)))
+
+spark.sql.files.maxPartitionBytes
+spark.sql.broadcastTimeout
+spark.sql.autoBroadcastJoinThreshold
+
 
 
 case class Account(number: String, firstName: String, lastName: String)
@@ -1280,65 +1392,6 @@ object Detector {
 
 
 
-
-
-
-// ************************************************************************************************
-// ************************************* TESTING  *************************************************
-// ************************************************************************************************
-BAD:
-val splitLines = inFile.map(line => {
-    val reader = new CSVReader(new StringReader(line))
-    reader.readNext()
-})
-
-GOOD:
-def parseLine(line: String): Array[Double] = {
-    val reader = new CSVReader(new StringReader(line))
-    reader.readNext().map(_.toDouble)
-}
-
-then we can:
-test("Should parse a csv with numbers") {
-    MoreTestableLoadCsvExample.parseLine("1,2") should equal (Array[Double](1.0, 2.0))
-}
-
-// testing with RDD
-trait SSC extends BeforeAndAfterAll { self: Suite =>
-    @transient private var _sc: SparkContext = _
-    def sc: SparkContext = _sc
-
-    var conf = new SparkConf(false)
-
-    override def beforeAll() {
-        _sc = new SparkContext("local[*]", "test", conf)
-        super.beforeAll()
-    }
-
-    override def afterAll() {
-        LocalSparkContext.stop(_sc)
-        _sc = null
-        super.afterAll()
-    }
-}
-
-
-test("should parse csv with numbers") {
-    val input = sc.parallelize(List("1,2"))
-    val result = input.map(parseLine)
-    result.collect() should equal (Array[Double](1.0, 2.0))
-}
-
-// testing with DStreams
-class SampleStreamingTest extends StreamingSuiteBase {
-    test("really simple transform") {
-        val input = List(List("hi"), List("hi holden"), List("bye"))
-        val expect= List(List("hi"), List("hi", "holden"), List("bye"))
-        testOperation[String, String](input, tokenize _, expect, useSet = true)
-    }
-}
-
-
 // monitoring console  localhost:4040/SQL
 
 app.pluralsight.com/courses/tsql-window-functions
@@ -1364,6 +1417,7 @@ http://ampcamp.berkeley.edu/exercises-strata-conf-2013/index.html
 https://databricks-training.s3.amazonaws.com/data-exploration-using-spark-sql.html
 https://community.cloud.databricks.com/?o=6367690482937859#notebook/2637480095869071 (kristofer@migm.pl)
 
+https://github.com/deanwampler/JustEnoughScalaForSpark/blob/master/notebooks/JustEnoughScalaForSpark.ipynb   =  https://youtu.be/LBoSgiLV_NQ
 
 
 // frequent issues:
