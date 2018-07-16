@@ -21,9 +21,12 @@ git commit -am "comment"  # commits ALL (a)
 git remote remove origin
 git remote add origin  git@github.com:kklapec/test-repo.git #SSH (pub)
 git push -u origin master  # --set-upstream
+git push origin feature/feat1	# push branch to remote repo
 
+# To merge the latest changes from master into your branch, in this example named users/jamal/readme-fix:
+git checkout users/jamal/readme-fix
 git pull 					#download changes from remote repo
-git pull origin <branch>
+git pull origin <branch> e.g. master
 
 git stash                   # save
 git stash apply             # re-apply changes after pull
@@ -40,11 +43,25 @@ git checkout -- <file/target>   # discard changes in working directory, restore 
 git checkout master  			# go back to master
 git merge feature/feat1         # (while in master) bring changes from branch feat1 , also deleted files if in feat1
 
-git fetch origin                # drop all local changed and commits
-git reset --hard origin/master  # fetch latest history from server
+fetch , which downloads the changes from your remote repo but does not apply them to your code (only for review)
+merge , which applies changes taken from fetch to a branch on your local repo.
+pull  , which is a combined command that does a fetch + merge  (in Visual Studio - SYNC)
 
-git branch -d feature/feat1     # DELETE branch
+git fetch origin                # download latest code from repo, drop all local changes and commits
+git reset --hard origin/master  # (local branches only) reverts changes by moving a branch reference backwards in time to an older commit, like latest never happend
+git reset --hard HEAD			# The --hard part of the command tells Git to reset the files to the state of the previous commit and discard any staged changes.
+git reset HEAD~1
+
+git revert <id>					# revert to given ID, undo changes made in commit ID
+git commit 						# commit those reverted files
+
+git branch -d feature/feat1     # DELETE branch locally
+git push origin --delete feature/feat1 # DELETE branch remotely
 git branch -d --force feature/feat1 # same as -D
+
+
+git branch -f master HEAD~3		# moves (by force) the master branch to three parents behind HEAD.
+
 
 git show HEAD
 git log --summary
@@ -58,6 +75,8 @@ git log -p HEAD (exclude) .. FETCH_HEAD (include)
 __pycache__/
 *.pyc
 
+git config --global user.name "NAME"
+git config --global user.email "email@com"
 git config --global color.ui true
 git config --global --edit
 git config format.pretty oneline
@@ -81,3 +100,9 @@ git config --amend --reset-auth
 6. git merge release-0.1
 7. git push
 8. git branch -d release-0.1
+
+# to rebase
+git pull
+git checkout feature
+git rebase master
+git push -f origin feature # optional
