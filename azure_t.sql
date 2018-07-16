@@ -1,7 +1,7 @@
 -- ------------------------------------------------------------------------------------------------
 -- SQL
 -- ------------------------------------------------------------------------------------------------
-SET ANSI_WALLS ON
+SET ANSI_NULLS ON
 SET QUOTED_IDENTIFIER ON
 SET NOCOUNT ON
 
@@ -165,19 +165,18 @@ https://blogs.msdn.microsoft.com/sqlcat/2017/05/17/azure-sql-data-warehouse-load
 
 
 
+/////////////////////////////////////////////
+/////////////////////////////////////////////
+-- while connecting to dbo.master
+CREATE LOGIN userx WITH PASSWORD = 'pass'
+-- you need to connect manually to another db
+CREATE USER userx FOR LOGIN userx
+GO
+EXEC sp_addrolemember 'db_datareader' , 'userx'
+EXEC sp_addrolemember 'db_datawriter' , 'userx'
+EXEC sp_addrolemember 'db_ddladminr' , 'userx'
+
+
+
 DIMENSION = ROUND_ROBIN
 FACT = HASH
-
-
--- ------------------------------------------------------------------------------------------------
--- U-SQL
--- ------------------------------------------------------------------------------------------------
-
-
-
-
-# DEBUG
-https://youtu.be/3enkNvprfm4
-https://docs.microsoft.com/en-us/azure/data-lake-analytics/data-lake-analytics-debug-u-sql-jobs
-
-
