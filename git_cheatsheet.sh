@@ -45,9 +45,10 @@ git merge feature/feat1         # (while in master) bring changes from branch fe
 
 fetch , which downloads the changes from your remote repo but does not apply them to your code (only for review)
 merge , which applies changes taken from fetch to a branch on your local repo.
-pull  , which is a combined command that does a fetch + merge  (in Visual Studio - SYNC)
+pull  , which is a combined command that = fetch + merge  (in Visual Studio - SYNC)
 
-git fetch origin                # download latest code from repo, drop all local changes and commits
+git fetch origin master         # 1. download latest code from repo (into hidden .git folder), drop all local changes and commits
+git merge origin/master			# 2. merges into master branch what was stored in .git folder
 git reset --hard origin/master  # (local branches only) reverts changes by moving a branch reference backwards in time to an older commit, like latest never happend
 git reset --hard HEAD			# The --hard part of the command tells Git to reset the files to the state of the previous commit and discard any staged changes.
 git reset HEAD~1
