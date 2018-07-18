@@ -23,11 +23,6 @@ git remote add origin  git@github.com:kklapec/test-repo.git #SSH (pub)
 git push -u origin master  # --set-upstream
 git push origin feature/feat1	# push branch to remote repo
 
-# To merge the latest changes from master into your branch, in this example named users/jamal/readme-fix:
-git checkout users/jamal/readme-fix
-git pull 					#download changes from remote repo
-git pull origin <branch> e.g. master
-
 git stash                   # save
 git stash apply             # re-apply changes after pull
 git diff --staged           # see what was staged
@@ -42,6 +37,11 @@ git checkout -- <file/target>   # discard changes in working directory, restore 
 
 git checkout master  			# go back to master
 git merge feature/feat1         # (while in master) bring changes from branch feat1 , also deleted files if in feat1
+
+# To merge the latest changes from master into your branch, in this example named users/jamal/readme-fix:
+git checkout users/jamal/readme-fix
+git pull 					#download changes from remote repo
+git pull origin <branch> e.g. master
 
 fetch , which downloads the changes from your remote repo but does not apply them to your code (only for review)
 merge , which applies changes taken from fetch to a branch on your local repo.
