@@ -41,7 +41,7 @@ git merge feature/feat1         # (while in master) bring changes from branch fe
 # To merge the latest changes from master into your branch, in this example named users/jamal/readme-fix:
 git checkout users/jamal/readme-fix
 git pull 					#download changes from remote repo
-git pull origin <branch> e.g. master
+git pull origin <branch> --allow-unrelated-histories
 
 fetch , which downloads the changes from your remote repo but does not apply them to your code (only for review)
 merge , which applies changes taken from fetch to a branch on your local repo.
