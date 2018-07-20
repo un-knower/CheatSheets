@@ -457,7 +457,7 @@ $ docker --tlsverify ps
 # docker-compose.yml
 version: "3"
 services:
-  web:
+  web:  # or master
     # replace username/repo:tag with your name and image details
     image: username/repo:tag
     deploy:
@@ -472,6 +472,12 @@ services:
       - "80:80"
     networks:
       - webnet
+    command: master  # albo worker
+    links:
+      - <other_service_name>:<hostname_or_container_name>  # e.g.  master:hadoop-dotnet-master
+    hostname: hadoop-dotnet-master  # name also needs to be master (not web like in this example)
+    container_name = hadoop-dotnet-master
+
 ##### addition
   visualizer:
     image: dockersamples/visualizer:stable
@@ -501,8 +507,8 @@ services:
 networks:
   webnet:       # load balancing!
 
-
 # one can start any of those services by typing
+docker-compose up -d  # background
 docker-compose up <service name1> <service name2>
 
 # enable swarm mode and make your machine swarm manager
